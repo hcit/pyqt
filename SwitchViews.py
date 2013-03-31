@@ -27,9 +27,9 @@ class UIElement:
 	def build( self ):
 		pass
 
-class UIWidget( QtGui.QWidget ):
+class UIWidget:
 	def __init__( self, master ):
-		super( UIWidget, self ).__init__()
+		self.widget = QtGui.QWidget( master )
 		self.master = master
 		self.build()
 	
@@ -82,38 +82,41 @@ class View( UIWidget ):
 	def build( self ):
 		layout = QtGui.QHBoxLayout()
 		layout.addStretch( 1 )
-		self.setLayout( layout )
-		self.master.setCentralWidget( self )
+		self.widget.setLayout( layout )
+		self.widget.setStyleSheet('color: black')
+		text = QtGui.QLineEdit( 'asd' )
+		self.master.setCentralWidget( self.widget )
 	
 	def display( self, viewName ):
 		
 		if viewName == 'list':
 			if not 'list' in self.__views.keys():
-				self.__views['list'] = ViewListView( self )
+				self.__views['list'] = ViewListView( self.widget )
 		elif viewName == 'text':
 			if not 'text' in self.__views.keys():
-				self.__views['text'] = ViewListView( self )
+				self.__views['text'] = ViewListView( self.widget )
 		
 		for key in self.__views.keys():
 			if key == viewName:
-				self.__views[key].show()
+				self.__views[key].widget.show()
 			else:
-				self.__views[key].hide()
+				self.__views[key].widget.hide()
 
-class ViewListView( View ):
+class ViewListView( UIWidget ):
 	def build( self ):
-		layout = QtGui.QVBoxLayout( self )
-		layout.addStretch( 1 )
-		self.setLayout( layout )
+		#layout = QtGui.QVBoxLayout( self )
+		#layout.addStretch( 1 )
+		#self.setLayout( layout )
+		self.widget.setStyleSheet('color: blue')
 		leftWidget = self.leftWidget()
 		rightWidget = self.rightWidget()
-		splitter = QtGui.QSplitter( QtCore.Qt.Horizontal, self.master )
+		splitter = QtGui.QSplitter( QtCore.Qt.Horizontal, self.widget )
 		splitter.addWidget( leftWidget )
 		splitter.addWidget( rightWidget )
 		#self.addWidget( splitter )
 	
 	def leftWidget( self ):
-		widget = QtGui.QWidget( self.master )
+		widget = QtGui.QWidget( self.widget )
 		widget.setStyleSheet('color: green')
 		layout = QtGui.QVBoxLayout( widget )
 		layout.addStretch( 1 )
@@ -121,7 +124,7 @@ class ViewListView( View ):
 		return widget
 	
 	def rightWidget( self ):
-		widget = QtGui.QWidget( self.master )
+		widget = QtGui.QWidget( self.widget )
 		widget.setStyleSheet('color: red')
 		layout = QtGui.QVBoxLayout( widget )
 		layout.addStretch( 1 )
