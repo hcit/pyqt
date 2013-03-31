@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- conding: utf-8 -*-
+from random import randint
 import sys, shelve, time
 from unidecode import unidecode
 from PyQt4 import QtGui, QtCore
@@ -25,6 +26,7 @@ class Main( QtGui.QMainWindow ):
 		
 		### Thread
 		self.WorkThread = WorkThread( self )
+		self.RandomActionThread = RandomActionThread()
 		
 		### Show the MainWindow
 		self.show()
@@ -158,7 +160,7 @@ class WorkThread( QtCore.QThread ):
 	
 	def respond( self ):
 		for ts, task in self.scheduleGet():
-			self.master
+			print 'RESPOND', ts, task
 	
 	@classmethod
 	def cronGet( self ):
@@ -194,7 +196,7 @@ class WorkThread( QtCore.QThread ):
 		schedule = shelve.open( self._schedulePath )
 		taskList = []
 		keys = schedule.keys()
-		schedule.sort()
+		keys.sort()
 		for ts in keys:
 			task = schedule[ts]
 			del schedule[ts]
@@ -232,9 +234,8 @@ class RandomActionThread( QtCore.QThread ):
 		)
 	}
 	
-	@classmethod
-	def getRandom( cls, dataType ):
-		self.randomData[dataType][len( self.randomData[dataType] )-1]
+	def getRandom( self, dataType ):
+		return self.randomData[dataType][randint( 0, len( self.randomData[dataType] ) - 1 )]
 	
 	def __init__( self ):
 		QtCore.QThread.__init__( self )
@@ -244,10 +245,9 @@ class RandomActionThread( QtCore.QThread ):
 		self.start()
 	
 	def run( self ):
-		from random import randint
 		while True:
 			# if random returns a "trigger" value we run a random action
-			if randint( 0, 100 ) == 1:
+			if randint( 0, 10 ) == 1:
 				getattr( self, self.getRandom( 'callback' ) )()
 			time.sleep( 0.4 )
 	
@@ -268,7 +268,6 @@ class RandomActionThread( QtCore.QThread ):
 
 
 def main():
-	RandomActionThread()
 	app = QtGui.QApplication( sys.argv )
 	ui = Main()
 	sys.exit( app.exec_() )
