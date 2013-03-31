@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- conding: utf-8 -*-
-import sys
+import sys, shelve, time
+from unidecode import unidecode
 from PyQt4 import QtGui, QtCore
 
 class Main( QtGui.QMainWindow ):
@@ -139,7 +140,6 @@ class WorkThread( QtCore.QThread ):
 	_schedulePath = 'schedule.db'
 	def __init__( self, master ):
 		#TODO: create default scheduled tasks if file not exists
-		import shelve
 		QtCore.QThread.__init__( self )
 		self.master = master
 		self.schedule = shelve.open( self._schedulePath )
@@ -150,19 +150,18 @@ class WorkThread( QtCore.QThread ):
 		self.start()
 	
 	def run( self ):
-		import time
 		while True:
-			
 			for ts, task in self.cronGet():
 				self.scheduleSet( ts, task['callback'], *task['arg'], **task['kwarg'] )
-			for ts, task in self.scheduleGet():
-				pass
 			time.sleep( 0.3 ) # artificial time delay
 			self.emit( QtCore.SIGNAL( 'respond()' ) )
 	
+	def respond( self ):
+		for ts, task in self.scheduleGet():
+			self.master
+	
 	@classmethod
 	def cronGet( self ):
-		import time
 		cron = shelve.open( self._cronPath )
 		taskList = []
 		keys = cron.keys()
@@ -173,14 +172,13 @@ class WorkThread( QtCore.QThread ):
 				del cron[ts]
 				cron[str( time.time() + task['period'] )] = task
 				taskList.append( ( ts, task ) )
-				self.scheduleSet( None, task['callback'], *task['arg'], **task['kwarg'] )
+				self.scheduleSet( task['callback'], None, *task['arg'], **task['kwarg'] )
 		cron.sync()
 		cron.close()
 		return taskList
 	
 	@classmethod
-	def cronSet( self, period, callback, *arg, **kwarg ):
-		import time
+	def cronSet( self, callback, period, *arg, **kwarg ):
 		cron = shelve.open( self._cronPath )
 		cron[str( time.time() )] = {
 			'period':period,
@@ -193,7 +191,6 @@ class WorkThread( QtCore.QThread ):
 	
 	@classmethod
 	def scheduleGet( self ):
-		import time
 		schedule = shelve.open( self._schedulePath )
 		taskList = []
 		keys = schedule.keys()
@@ -208,8 +205,7 @@ class WorkThread( QtCore.QThread ):
 		return taskList
 	
 	@classmethod
-	def scheduleSet( self, ts=None, callback, *arg, **kwarg ):
-		import time
+	def scheduleSet( self, callback, ts=None, *arg, **kwarg ):
 		if not ts:
 			ts = time.time()
 		schedule = shelve.open( self._schedulePath )
@@ -220,31 +216,54 @@ class WorkThread( QtCore.QThread ):
 		}
 		schedule.sync()
 		schedule.close()
-	
-	def respond( self ):
-		pass
 
 
 
 class RandomActionThread( QtCore.QThread ):
+	randomData = {
+		'contact':(
+			'\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd', 'Nick', 'Jack', '\xd0\x90\xd0\xbb\xd0\xb5\xd0\xba\xd1\x81\xd0\xb5\xd0\xb9', 'bot'
+		),
+		'status':(
+			'online', 'away', 'busy', 'unavailable', 'offline'
+		),
+		'callback':(
+			'statusAction', 'messageAction', 'reportAction'
+		)
+	}
+	
+	@classmethod
+	def getRandom( cls, dataType ):
+		self.randomData[dataType][len( self.randomData[dataType] )-1]
+	
 	def __init__( self ):
 		QtCore.QThread.__init__( self )
 		self.build()
 	
 	def build( self ):
-		self.actions = {
-			'contactList':[
-				(
-					( 'ivan', 'online' )
-				),
-			]
-		}
 		self.start()
 	
 	def run( self ):
-		import time
+		from random import randint
 		while True:
+			# if random returns a "trigger" value we run a random action
+			if randint( 0, 100 ) == 1:
+				getattr( self, self.getRandom( 'callback' ) )()
 			time.sleep( 0.4 )
+	
+	def statusAction( self ):
+		contact = self.getRandom( 'contact' )
+		status = self.getRandom( 'status' )
+		print '::statusAction', contact, status
+	
+	def messageAction( self ):
+		contact = self.getRandom( 'contact' )
+		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-   '
+		message = ''.join( [letters[randint(0,len(letters)-1)] for i in range(0,randint(1, 1000))] )
+		print '::messageAction', contact, message
+	
+	def reportAction( self ):
+		print '::reportAction'
 
 
 
