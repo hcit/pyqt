@@ -153,18 +153,10 @@ class WorkThread( QtCore.QThread ):
 		import time
 		while True:
 			
-			for ts, task in self.cron.keys():
-				if float( ts ) < time.time():
-					del self.cron[ts]
-					self.cron[str( time.time() + task['period'] )] = task
-					self.cron.sync()
-					#TODO set task in execution stack
-					if not task['callback'] in self.schedule.keys():
-						self.schedule[task['callback']] = []
-					schedule = self.schedule[task['callback']]
-					schedule.append( task )
-					self.schedule[task['callback']] = schedule
-					self.schedule.sync()
+			for ts, task in self.cronGet():
+				self.scheduleSet( ts, task['callback'], *task['arg'], **task['kwarg'] )
+			for ts, task in self.scheduleGet():
+				pass
 			time.sleep( 0.3 ) # artificial time delay
 			self.emit( QtCore.SIGNAL( 'respond()' ) )
 	
@@ -172,14 +164,19 @@ class WorkThread( QtCore.QThread ):
 	def cronGet( self ):
 		import time
 		cron = shelve.open( self._cronPath )
-		taskList = ()
-		for ts, task in cron.keys():
+		taskList = []
+		keys = cron.keys()
+		keys.sort()
+		for ts in keys:
+			task = cron[ts]
 			if float( ts ) < time.time():
 				del cron[ts]
 				cron[str( time.time() + task['period'] )] = task
+				taskList.append( ( ts, task ) )
 				self.scheduleSet( None, task['callback'], *task['arg'], **task['kwarg'] )
 		cron.sync()
 		cron.close()
+		return taskList
 	
 	@classmethod
 	def cronSet( self, period, callback, *arg, **kwarg ):
@@ -196,11 +193,33 @@ class WorkThread( QtCore.QThread ):
 	
 	@classmethod
 	def scheduleGet( self ):
-		pass
+		import time
+		schedule = shelve.open( self._schedulePath )
+		taskList = []
+		keys = schedule.keys()
+		schedule.sort()
+		for ts in keys:
+			task = schedule[ts]
+			del schedule[ts]
+			del task['period']
+			taskList.append( ( ts, task ) )
+		schedule.sync()
+		schedule.close()
+		return taskList
 	
 	@classmethod
 	def scheduleSet( self, ts=None, callback, *arg, **kwarg ):
-		pass
+		import time
+		if not ts:
+			ts = time.time()
+		schedule = shelve.open( self._schedulePath )
+		schedule[str( ts )] = {
+			'callback':callback,
+			'arg':arg,
+			'kwarg':kwarg
+		}
+		schedule.sync()
+		schedule.close()
 	
 	def respond( self ):
 		pass
