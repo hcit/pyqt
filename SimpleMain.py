@@ -3,7 +3,7 @@
 import sys
 from PyQt4 import QtGui, QtCore
 
-class SimpleMain( QtGui.QWidget ):
+class SimpleMain( QtGui.QMainWindow ):
 	def __init__( self ):
 		super( self.__class__, self ).__init__()
 		self.build()
@@ -11,9 +11,7 @@ class SimpleMain( QtGui.QWidget ):
 	def build( self ):
 		self.setGeometry(300, 300, 300, 200)
 		self.setWindowTitle('Menubar')    
-		"""
 		self.statusBar()
-		"""
 		
 		### actions
 		self.exitAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Exit', self )
@@ -23,83 +21,93 @@ class SimpleMain( QtGui.QWidget ):
 		
 		self.listViewAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&List', self )
 		self.listViewAction.setShortcut( 'Ctrl+L' )
-		#self.listViewAction.setStatusTip( 'List Files' )
+		self.listViewAction.setStatusTip( 'List Files' )
 		self.listViewAction.triggered.connect( self.listViewActionCallback )
 		
 		self.textViewAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Text', self )
 		self.textViewAction.setShortcut( 'Ctrl+T' )
-		#self.textViewAction.setStatusTip( 'Text Editor' )
+		self.textViewAction.setStatusTip( 'Text Editor' )
 		self.textViewAction.triggered.connect( self.textViewActionCallback )
 		
 		### Menus and Controls
-		"""
 		self.menuControl = self.menuBar()
 		self.fileMenuControl = self.menuControl.addMenu( '&File' )
 		self.fileMenuControl.addAction( self.exitAction )
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
 		self.viewMenuControl.addAction( self.listViewAction )
 		self.viewMenuControl.addAction( self.textViewAction )
-		"""
 		
-		### container Widget
-		self.container = QtGui.QWidget( self )
-		#layout = QtGui.QHBoxLayout()
-		#layout.addStretch( 1 )
-		#self.container.setLayout( layout )
-		self.container.setStyleSheet('color: blue')
-		#self.setCentralWidget( self.container )
-		self.text = QtGui.QLineEdit( "asd", self )
+		self.textEdit = QtGui.QTextEdit()
+		self.setCentralWidget( self.textEdit )
+		
+		
 		
 		### list Widget
-		leftListWidget = QtGui.QWidget( self )
-		leftListWidget.setStyleSheet('color: green')
-		layout = QtGui.QVBoxLayout( leftListWidget )
-		layout.addStretch( 1 )
-		leftListWidget.setLayout( layout )
+		self.listWidget = QtGui.QWidget()
+		self.listWidget.setWindowTitle( 'List' )
+		self.listWidget.setStyleSheet('background: blue')
+		self.listWidget.resize(250, 150)
+		self.listWidget.move(550, 550)
 		
-		rightListWidget = QtGui.QWidget( self )
-		rightListWidget.setStyleSheet('color: red')
-		layout = QtGui.QVBoxLayout( rightListWidget )
-		layout.addStretch( 1 )
-		rightListWidget.setLayout( layout )
+		listWidgetLeft = QtGui.QWidget( self.listWidget )
+		listWidgetLeft.setStyleSheet('background: black')
+		layout = QtGui.QVBoxLayout( listWidgetLeft )
+		layout.addStretch(  )
+		listWidgetLeft.setLayout( layout )
 		
-		self.listWidget = QtGui.QSplitter( QtCore.Qt.Horizontal, self )
-		self.listWidget.addWidget( leftListWidget )
-		self.listWidget.addWidget( rightListWidget )
+		listWidgetRight = QtGui.QWidget( self.listWidget )
+		listWidgetRight.setStyleSheet('background: white')
+		layout = QtGui.QVBoxLayout( listWidgetRight )
+		layout.addStretch(  )
+		listWidgetRight.setLayout( layout )
+		
+		listWidgetSplitter = QtGui.QSplitter( QtCore.Qt.Horizontal, self.listWidget )
+		listWidgetSplitter.addWidget( listWidgetLeft )
+		listWidgetSplitter.addWidget( listWidgetRight )
+		
+		
 		
 		### text Widget
-		"""
-		leftTextWidget = QtGui.QWidget( self )
-		leftTextWidget.setStyleSheet('color: green')
-		layout = QtGui.QVBoxLayout( leftTextWidget )
-		layout.addStretch( 1 )
-		leftTextWidget.setLayout( layout )
-		"""
-		leftTextWidget = QtGui.QFrame( self )
-		leftTextWidget.setFrameShape( QtGui.QFrame.StyledPanel )
+		self.textWidget = QtGui.QWidget()
+		self.textWidget.setWindowTitle( 'Text' )
+		self.textWidget.setStyleSheet('background: green')
+		self.textWidget.resize(250, 150)
+		self.textWidget.move(450, 450)
 		
-		#rightTextWidget = QtGui.QWidget( self )
-		#rightTextWidget.setStyleSheet('color: red')
-		#layout = QtGui.QVBoxLayout( rightTextWidget )
+		textWidgetLeft = QtGui.QWidget( self.textWidget )
+		textWidgetLeft.setStyleSheet('background: black')
+		#layout = QtGui.QVBoxLayout( textWidgetLeft )
 		#layout.addStretch( 1 )
-		#rightTextWidget.setLayout( layout )
-		rightTextWidget = QtGui.QFrame( self )
-		rightTextWidget.setFrameShape( QtGui.QFrame.StyledPanel )
+		#textWidgetLeft.setLayout( layout )
+		textWidgetLeftTextEdit = QtGui.QTextEdit( textWidgetLeft )
+		textWidgetLeftTextEdit.setMaximumHeight( 1000 )
 		
-		self.textWidget = QtGui.QSplitter( QtCore.Qt.Horizontal, self )
-		self.textWidget.addWidget( leftTextWidget )
-		self.textWidget.addWidget( rightTextWidget )
+		textWidgetRight = QtGui.QWidget( self.textWidget )
+		textWidgetRight.setStyleSheet('background: white')
+		#layout = QtGui.QVBoxLayout( textWidgetRight )
+		#layout.addStretch( 1 )
+		#textWidgetRight.setLayout( layout )
+		textWidgetRightTextEdit = QtGui.QTextEdit( textWidgetRight )
+		textWidgetRightTextEdit.setMaximumHeight( 1000 )
+		
+		grid = QtGui.QGridLayout()
+		grid.addWidget( textWidgetLeft, 0, 0 )
+		grid.addWidget( textWidgetRight, 0, 1)
+		self.textWidget.setLayout( grid )
+		#textWidgetSplitter = QtGui.QSplitter( QtCore.Qt.Horizontal, self.textWidget )
+		#textWidgetSplitter.addWidget( textWidgetLeft )
+		#textWidgetSplitter.addWidget( textWidgetRight )
+		
+		
 		
 		### Show the MainWindow
-		self.textViewActionCallback()
+		#self.listViewActionCallback()
 		self.show()
 	
 	def listViewActionCallback( self ):
 		self.listWidget.show()
-		self.textWidget.hide()
 	
 	def textViewActionCallback( self ):
-		self.listWidget.hide()
 		self.textWidget.show()
 
 
