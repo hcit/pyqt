@@ -160,7 +160,7 @@ class WorkThread( QtCore.QThread ):
 	
 	def respond( self ):
 		for ts, task in self.scheduleGet():
-			print 'RESPOND', ts, task
+			print '::RESPOND', ts, task
 	
 	@classmethod
 	def cronGet( self ):
@@ -230,12 +230,34 @@ class RandomActionThread( QtCore.QThread ):
 			'online', 'away', 'busy', 'unavailable', 'offline'
 		),
 		'callback':(
-			'statusAction', 'messageAction', 'reportAction'
+			'statusAction', 'contactListAction', 'messageAction', 'reportAction'
 		)
 	}
 	
-	def getRandom( self, dataType ):
-		return self.randomData[dataType][randint( 0, len( self.randomData[dataType] ) - 1 )]
+	@classmethod
+	def getRandom( cls, dataType ):
+		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
+	
+	@classmethod
+	def contactListAction( cls ):
+		return [( 'statusAction', [ contact, cls.getRandom( 'status' ) ], {} ) for contact in cls.randomData['contact'] ]
+	
+	@classmethod
+	def statusAction( cls ):
+		contact = cls.getRandom( 'contact' )
+		status = cls.getRandom( 'status' )
+		return ( [ 'statusAction', [ contact, status ], {} ] )
+	
+	@classmethod
+	def messageAction( cls ):
+		contact = cls.getRandom( 'contact' )
+		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-   '
+		message = ''.join( [letters[randint(0,len(letters)-1)] for i in range(0,randint(1, 1000))] )
+		return ( [ 'messageAction', [ contact, message ], {} ] )
+	
+	@classmethod
+	def reportAction( cls ):
+		return ( [ 'reportAction', [], {} ] )
 	
 	def __init__( self ):
 		QtCore.QThread.__init__( self )
@@ -248,22 +270,10 @@ class RandomActionThread( QtCore.QThread ):
 		while True:
 			# if random returns a "trigger" value we run a random action
 			if randint( 0, 10 ) == 1:
-				getattr( self, self.getRandom( 'callback' ) )()
+				callback = self.getRandom( 'callback' )
+				for action, arg, kwarg in getattr( self, callback )():
+					print '::TASK', callback, arg, kwarg
 			time.sleep( 0.4 )
-	
-	def statusAction( self ):
-		contact = self.getRandom( 'contact' )
-		status = self.getRandom( 'status' )
-		print '::statusAction', contact, status
-	
-	def messageAction( self ):
-		contact = self.getRandom( 'contact' )
-		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-   '
-		message = ''.join( [letters[randint(0,len(letters)-1)] for i in range(0,randint(1, 1000))] )
-		print '::messageAction', contact, message
-	
-	def reportAction( self ):
-		print '::reportAction'
 
 
 
