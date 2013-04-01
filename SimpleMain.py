@@ -11,8 +11,8 @@ class Main( QtGui.QMainWindow ):
 		self.build()
 	
 	def build( self ):
-		self.setGeometry(300, 300, 300, 200)
-		self.setWindowTitle('Menubar')    
+		self.setGeometry(50, 100, 300, 600)
+		self.setWindowTitle( 'Contacts' )    
 		self.statusBar()
 		
 		self.Action = Action( self )
@@ -49,16 +49,33 @@ class Action:
 		self.listViewAction.setStatusTip( 'List Files' )
 		self.listViewAction.triggered.connect( self.listViewActionCallback )
 		
-		self.textViewAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Text', self.master )
-		self.textViewAction.setShortcut( 'Ctrl+T' )
-		self.textViewAction.setStatusTip( 'Text Editor' )
-		self.textViewAction.triggered.connect( self.textViewActionCallback )
+		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Text', self.master )
+		self.chatAction.setShortcut( 'Ctrl+T' )
+		self.chatAction.setStatusTip( 'Text Editor' )
+		self.chatAction.triggered.connect( self.chatActionCallback )
 	
 	def listViewActionCallback( self ):
 		self.master.View.listView().show()
 	
-	def textViewActionCallback( self ):
-		self.master.View.textView().show()
+	def chatActionCallback( self ):
+		self.master.View.chat().show()
+	
+	def pickContactActionCallback( self ):
+		contact = self.master.View.contactList().value()
+		print '::pickContactActionCallback', contact, self.master.View.contactItem( contact ).messages()
+		self.chatActionCallback()
+		self.master.View.chatRightTextEdit.clear()
+		for ts, message in self.master.View.contactItem( contact ).messages():
+			self.master.View.chatRightTextEdit.write( '[%s] %s\n%s\n' % ( str(ts), contact, message ) )
+	
+	def statusActionTrigger( self, contact, status ):
+		self.master.View.contactItem( contact, status )
+	
+	def messageActionTrigger( self, contact, message ):
+		self.master.View.contactItem( contact ).messageSet( str(time.time()), message )
+	
+	def reportActionTrigger( self ):
+		pass
 
 
 
@@ -73,7 +90,7 @@ class Control:
 		self.fileMenuControl.addAction( self.master.Action.exitAction )
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
 		self.viewMenuControl.addAction( self.master.Action.listViewAction )
-		self.viewMenuControl.addAction( self.master.Action.textViewAction )
+		#self.viewMenuControl.addAction( self.master.Action.chatAction )
 
 
 
@@ -83,25 +100,74 @@ class View:
 		self.build()
 	
 	def build( self ):
-		self.master.textEdit = QtGui.QTextEdit()
-		self.master.setCentralWidget( self.master.textEdit )
+		self.master.central = QtGui.QWidget()
+		#self.master.central.setWindowTitle( 'Text' )
+		self.master.central.setStyleSheet( 'background: white' )
+		self.master.central.resize(250, 150)
+		self.master.central.move(450, 450)
+		
+		grid = QtGui.QGridLayout()
+		grid.addWidget( self.contactFilter( self.master.central ), 0, 0 )
+		grid.addWidget( self.contactList( self.master.central ), 1, 0 )
+		self.master.central.setLayout( grid )
+		
+		self.master.setCentralWidget( self.master.central )
+		
+		#self.master.textEdit = QtGui.QTextEdit()
+		#self.master.setCentralWidget( self.master.textEdit )
+	
+	def contactList( self, parent=None ):
+		if not hasattr( self, '_contactList' ):
+			self._contactList = QtGui.QGroupBox( 'Contacts', parent )
+			self._contactList.layout = QtGui.QVBoxLayout()
+			self._contactList.setLayout( self._contactList.layout )
+			self._contactList.radioList = {}
+			setattr( self._contactList, 'value', lambda:''.join( [k for k, w in self._contactList.radioList.items() if w.isChecked()] ) )
+			self._contactList.setStyleSheet( 'background:black; color:white' )
+			#self._contactList._textEdit = QtGui.QTextEdit( self._contactList )
+			self._contactList.contactListItems = {}
+		return self._contactList
+	
+	def contactItem( self, contact, status=None ):
+		if not contact in self._contactList.radioList.keys():
+			self._contactList.radioList[contact] = QtGui.QRadioButton( '' )
+			self._contactList.radioList[contact].messageNew = []
+			self._contactList.radioList[contact].messageTime = []
+			self._contactList.radioList[contact].messageList = {}
+			setattr( self._contactList.radioList[contact], 'update', lambda: self._contactList.radioList[contact].setText( '%s [%s] %s' % ( contact, self._contactList.radioList[contact].status, ( len( self._contactList.radioList[contact].messageNew ) and '('+str( len( self._contactList.radioList[contact].messageNew ) )+')' or '') ) ) )
+			setattr( self._contactList.radioList[contact], 'messages', lambda: setattr( self._contactList.radioList[contact], 'messageNew', [] ) or self._contactList.radioList[contact].messageTime.sort() or [(ts,self._contactList.radioList[contact].messageList[ts]) for ts in self._contactList.radioList[contact].messageTime] )
+			setattr( self._contactList.radioList[contact], 'messageSet', lambda ts,message: self._contactList.radioList[contact].messageTime.append(ts) or self._contactList.radioList[contact].messageList.update( {ts:message} ) or self._contactList.radioList[contact].messageNew.append( {ts:message} ) or self._contactList.radioList[contact].update() )
+			self._contactList.radioList[contact].clicked.connect( self.master.Action.pickContactActionCallback )
+			self._contactList.layout.addWidget( self._contactList.radioList[contact] )
+			self._contactList.radioList[contact].status = '?'
+		self._contactList.radioList[contact].status = status or self._contactList.radioList[contact].status
+		self._contactList.radioList[contact].update()
+		#self._contactList.radioList[contact].setText( '%s [%s] %s' % ( contact, self._contactList.radioList[contact].status, ( len( self._contactList.radioList[contact].messageNew ) and '('+str( len( self._contactList.radioList[contact].messageNew ) )+')' or '') ) )
+		return self._contactList.radioList[contact]
+			
+	
+	def contactFilter( self, parent=None ):
+		if not hasattr( self, '_contactFilter' ):
+			self._contactFilter = QtGui.QLineEdit( parent )
+			self._contactFilter.setStyleSheet( 'background:black; color:white' )
+		return self._contactFilter
 	
 	def listView( self ):
 		if not hasattr( self.master, 'listView' ):
 			self.master.listView = QtGui.QWidget()
 			self.master.listView.setWindowTitle( 'List' )
-			self.master.listView.setStyleSheet('background: blue')
+			self.master.listView.setStyleSheet( 'background: blue' )
 			self.master.listView.resize(250, 150)
 			self.master.listView.move(550, 550)
 		
 			listViewLeft = QtGui.QWidget( self.master.listView )
-			listViewLeft.setStyleSheet('background: black')
+			listViewLeft.setStyleSheet( 'background: black' )
 			layout = QtGui.QVBoxLayout( listViewLeft )
 			layout.addStretch(  )
 			listViewLeft.setLayout( layout )
 		
 			listViewRight = QtGui.QWidget( self.master.listView )
-			listViewRight.setStyleSheet('background: white')
+			listViewRight.setStyleSheet( 'background: white' )
 			layout = QtGui.QVBoxLayout( listViewRight )
 			layout.addStretch(  )
 			listViewRight.setLayout( layout )
@@ -111,29 +177,38 @@ class View:
 			listViewSplitter.addWidget( listViewRight )
 		return self.master.listView
 		
-	def textView( self ):
-		if not hasattr( self.master, 'textView' ):
-			self.master.textView = QtGui.QWidget()
-			self.master.textView.setWindowTitle( 'Text' )
-			self.master.textView.setStyleSheet('background: green')
-			self.master.textView.resize(250, 150)
-			self.master.textView.move(450, 450)
-		
-			textViewLeft = QtGui.QWidget( self.master.textView )
-			textViewLeft.setStyleSheet('background: black')
-			textViewLeftTextEdit = QtGui.QTextEdit( textViewLeft )
-			textViewLeftTextEdit.setMaximumHeight( 1000 )
-		
-			textViewRight = QtGui.QWidget( self.master.textView )
-			textViewRight.setStyleSheet('background: white')
-			textViewRightTextEdit = QtGui.QTextEdit( textViewRight )
-			textViewRightTextEdit.setMaximumHeight( 1000 )
+	def chat( self ):
+		if not hasattr( self.master, 'chat' ):
+			self.master.chat = QtGui.QWidget()
+			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - XMPP' )
+			self.master.chat.setStyleSheet( 'background: green' )
+			self.master.chat.resize(250, 150)
+			self.master.chat.move(450, 450)
 		
 			grid = QtGui.QGridLayout()
-			grid.addWidget( textViewLeft, 0, 0 )
-			grid.addWidget( textViewRight, 0, 1)
-			self.master.textView.setLayout( grid )
-		return self.master.textView
+			grid.addWidget( self.chatDialog( self.master.chat ), 0, 0 )
+			grid.addWidget( self.chatMessage( self.master.chat ), 1, 0 )
+			self.master.chat.setLayout( grid )
+		return self.master.chat
+	
+	def chatDialog( self, parent=None ):
+		if not hasattr( self, '_chatDialog' ):
+			self._chatDialog = QtGui.QWidget( parent )
+			self._chatDialog.setStyleSheet( 'background: white' )
+			self.chatRightTextEdit = QtGui.QTextEdit( self._chatDialog )
+			self.chatRightTextEdit.setMaximumHeight( 1000 )
+			self.chatRightTextEdit.setReadOnly(1)
+			setattr( self.chatRightTextEdit, 'textCursor', QtGui.QTextCursor( self.chatRightTextEdit.document() ) )
+			setattr( self.chatRightTextEdit, 'write', lambda text: self.chatRightTextEdit.textCursor.insertText( text + '\n' ) )
+		return self._chatDialog
+	
+	def chatMessage( self, parent=None ):
+		if not hasattr( self, '_chatMessage' ):
+			self._chatMessage = QtGui.QWidget( parent )
+			self._chatMessage.setStyleSheet( 'background: white' )
+			chatLineEdit = QtGui.QLineEdit( self._chatMessage )
+			chatLineEdit.setMaximumHeight( 1000 )
+		return self._chatMessage
 
 
 
@@ -161,6 +236,7 @@ class WorkThread( QtCore.QThread ):
 	def respond( self ):
 		for ts, task in self.scheduleGet():
 			print '::RESPOND', ts, task
+			getattr( self.master.Action, task['callback']+'Trigger' )( *task['arg'], **task['kwarg'] )
 	
 	@classmethod
 	def cronGet( self ):
@@ -200,7 +276,6 @@ class WorkThread( QtCore.QThread ):
 		for ts in keys:
 			task = schedule[ts]
 			del schedule[ts]
-			del task['period']
 			taskList.append( ( ts, task ) )
 		schedule.sync()
 		schedule.close()
@@ -224,13 +299,13 @@ class WorkThread( QtCore.QThread ):
 class RandomActionThread( QtCore.QThread ):
 	randomData = {
 		'contact':(
-			'\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd', 'Nick', 'Jack', '\xd0\x90\xd0\xbb\xd0\xb5\xd0\xba\xd1\x81\xd0\xb5\xd0\xb9', 'bot'
+			'Ivan', 'Nick', 'Jack', 'Petr', 'bot'
 		),
 		'status':(
 			'online', 'away', 'busy', 'unavailable', 'offline'
 		),
 		'callback':(
-			'statusAction', 'contactListAction', 'messageAction', 'reportAction'
+			'statusAction', 'messageAction', 'reportAction'
 		)
 	}
 	
@@ -239,25 +314,21 @@ class RandomActionThread( QtCore.QThread ):
 		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
 	
 	@classmethod
-	def contactListAction( cls ):
-		return [( 'statusAction', [ contact, cls.getRandom( 'status' ) ], {} ) for contact in cls.randomData['contact'] ]
-	
-	@classmethod
 	def statusAction( cls ):
 		contact = cls.getRandom( 'contact' )
 		status = cls.getRandom( 'status' )
-		return ( [ 'statusAction', [ contact, status ], {} ] )
+		return ( [ contact, status ], {} )
 	
 	@classmethod
 	def messageAction( cls ):
 		contact = cls.getRandom( 'contact' )
 		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-   '
 		message = ''.join( [letters[randint(0,len(letters)-1)] for i in range(0,randint(1, 1000))] )
-		return ( [ 'messageAction', [ contact, message ], {} ] )
+		return ( [ contact, message ], {} )
 	
 	@classmethod
 	def reportAction( cls ):
-		return ( [ 'reportAction', [], {} ] )
+		return ( [], {} )
 	
 	def __init__( self ):
 		QtCore.QThread.__init__( self )
@@ -269,10 +340,11 @@ class RandomActionThread( QtCore.QThread ):
 	def run( self ):
 		while True:
 			# if random returns a "trigger" value we run a random action
-			if randint( 0, 10 ) == 1:
+			if randint( 0, 2 ) == 1:
 				callback = self.getRandom( 'callback' )
-				for action, arg, kwarg in getattr( self, callback )():
-					print '::TASK', callback, arg, kwarg
+				arg, kwarg  = getattr( self, callback )()
+				print '::TASK', callback, None, arg, kwarg
+				WorkThread.scheduleSet( callback, None, *arg, **kwarg )
 			time.sleep( 0.4 )
 
 
