@@ -54,6 +54,11 @@ class Action:
 		self.exitAction.setStatusTip( 'Exit application' )
 		self.exitAction.triggered.connect( QtGui.qApp.quit )
 		
+		self.preferencesAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Preferences', self.master )
+		self.preferencesAction.setShortcut( 'Ctrl+R' )
+		self.preferencesAction.setStatusTip( 'Preferences' )
+		self.preferencesAction.triggered.connect( self.preferencesActionCallback )
+		
 		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Projects', self.master )
 		self.projectsAction.setShortcut( 'Ctrl+P' )
 		self.projectsAction.setStatusTip( 'Show projects' )
@@ -63,6 +68,9 @@ class Action:
 		self.chatAction.setShortcut( 'Ctrl+H' )
 		self.chatAction.setStatusTip( 'Chat' )
 		self.chatAction.triggered.connect( self.chatActionCallback )
+	
+	def preferencesActionCallback( self ):
+		self.master.View.preferences().show()
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
@@ -93,6 +101,14 @@ class Action:
 		self.master.View.chatDialog().message( str( time.time() ), CONFIG_SELF, message )
 		self.master.View.chatMessage().clear()
 		Wrap.send( contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+	
+	def preferencesSubmitCallback( self ):
+		for k, v in self.master.View.preferences().fields.items():
+			Conf.setConf( k, type( Conf.getConf( k ) )( v.text() ) )
+			self.master.View.preferences().hide()
+	
+	def preferencesCancelCallback( self ):
+		self.master.View.preferences().hide()
 	
 	def projectListActionTrigger( self, projects ):
 		for project, title in projects:
@@ -126,6 +142,7 @@ class Control:
 		self.fileMenuControl.addAction( self.master.Action.exitAction )
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
 		self.viewMenuControl.addAction( self.master.Action.projectsAction )
+		self.viewMenuControl.addAction( self.master.Action.preferencesAction )
 		#self.viewMenuControl.addAction( self.master.Action.chatAction )
 
 
@@ -239,6 +256,59 @@ class View:
 			self._chatMessage.setMaximumHeight( 50 )
 			self.master.connect( self._chatMessage, QtCore.SIGNAL( 'sendMessage' ), self.master.Action.sendMessageCallback )
 		return self._chatMessage
+	
+	#################### VIEW preferences ####################
+	def preferences( self ):
+		if not hasattr( self.master, 'preferences' ):
+			self.master.preferences = QtGui.QWidget()
+			self.master.preferences.fields = {}
+			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + CONFIG_APPNAME )
+			self.master.preferences.resize( 450, 550 )
+			self.master.preferences.move( 350, 350 )
+		
+			grid = QtGui.QGridLayout()
+			n = 0
+			for key, value in Conf.listConf():
+				grid.addWidget( QtGui.QLabel( key ), n, 0 )
+				grid.addWidget( self.preferencesField( self.master.preferences, key, value ), n, 1 )
+				n += 1
+			
+			self.master.preferences.submit = QtGui.QPushButton( 'Save', self.master.preferences )
+			self.master.connect( self.master.preferences.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.preferencesSubmitCallback )
+			grid.addWidget( self.master.preferences.submit, n, 0 )
+			
+			self.master.preferences.cancel = QtGui.QPushButton( 'Cancel', self.master.preferences )
+			self.master.connect( self.master.preferences.cancel, QtCore.SIGNAL( 'clicked()' ), self.master.Action.preferencesCancelCallback )
+			grid.addWidget( self.master.preferences.cancel, n, 1 )
+			
+			self.master.preferences.setLayout( grid )
+		return self.master.preferences
+	
+	def preferencesField( self, parent, key, value ):
+		if not key in self.master.preferences.fields.keys():
+			self.master.preferences.fields[key] = QtGui.QLineEdit( str( value ), parent )
+		return self.master.preferences.fields[key]
+	
+	def projectFilter( self, parent=None ):
+		if not hasattr( self, '_projectFilter' ):
+			self._projectFilter = QtGui.QLineEdit( parent )
+			self._projectFilter.setStyleSheet( 'background:black; color:white' )
+		return self._projectFilter
+	
+	def projectList( self, parent=None ):
+		if not hasattr( self, '_projectList' ):
+			self._projectList = QProjectList( self.master.projects )
+			self._projectList.setStyleSheet( 'background:black; color:white' )
+		return self._projectList
+	
+	def projectItem( self, project, status=None ):
+		if not project in self._projectList.radioList.keys():
+			self._projectList.radioList[project] = QProject( project, self._projectList )
+			self._projectList.radioList[project].clicked.connect( self.master.Action.pickProjectActionCallback )
+			self._projectList.layout.addWidget( self._projectList.radioList[project] )
+		self._projectList.radioList[project].status = status or self._projectList.radioList[project].status
+		self._projectList.radioList[project].update()
+		return self._projectList.radioList[project]
 
 
 
@@ -669,20 +739,22 @@ class QProjectData( QtGui.QTextEdit ):
 	
 	def plain( self, data ):
 		if type( data ) == list:
-			return '<ul>' + ''.join( ['<li>' + self.plain( i ) + '</li>' for i in data] ) + '</ul>'
+			return '<ul style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<li>' + self.plain( i ) + '</li>' for i in data] ) + '</ul>'
 		elif type( data ) == dict:
-			return '<dl>' + ''.join( ['<dd>' + self.plain( k ) + '</dd>' + '<dt>' + self.plain( v ) + '</dt>' for k, v in data.items()] ) + '</dl>'
+			return '<dl style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<dt style="font-weight:bold;">' + self.plain( k ) + '</dt>' + '<dd>' + self.plain( v ) + '</dd>' for k, v in data.items()] ) + '</dl>'
 		else:
 			return str( data )
 	
 	def show( self, project, projectData ):
 		import json
 		self.clear()
-		data = '<table>'
+		data = '<table width="100%" cellspacing="4" cellpadding="0">'
+		n=0
 		for k, v in json.loads( projectData ).items():
+			n+=1
 			data += '<tr>'
-			data += '<th>' + str( k ) + '</th>'
-			data += '<td>' + self.plain( v ) + '</td>'
+			data += '<th style="background:'+(n%2 and '#f6f6f6' or '#fcfcfc')+';">' + str( k ) + '</th>'
+			data += '<td style="">' + self.plain( v ) + '</td>'
 			data += '</tr>'
 		data += '</table>'
 		text =  '<span style="font-weight:bold; color:#66f;">[%s]</span><br />%s<br />' % (

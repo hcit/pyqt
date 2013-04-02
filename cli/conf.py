@@ -13,10 +13,14 @@ class Conf:
 		return cls.__handle
 	
 	@classmethod
+	def listConf( cls ):
+		return cls.__get_handle().items()
+	
+	@classmethod
 	def getConf( cls, property, default=None ):
 		return cls.__get_handle().get( property, default )
 	
 	@classmethod
 	def setConf( cls, property, value ):
-		cls.__get_handle[property] = value
-		cls.__get_handle.sync()
+		cls.__get_handle()[property] = value
+		cls.__get_handle().sync()
