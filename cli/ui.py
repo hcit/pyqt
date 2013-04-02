@@ -7,10 +7,6 @@ from PyQt4 import QtGui, QtCore
 from wrap import Wrap
 from conf import Conf
 
-CONFIG_APPNAME = Conf.getConf( 'appname' )
-CONFIG_SELF = Conf.getConf( 'username' )
-CONFIG_BOT = Conf.getConf( 'bot' )
-
 
 
 class UI( QtGui.QMainWindow ):
@@ -45,6 +41,8 @@ class UI( QtGui.QMainWindow ):
 class Action:
 	def __init__( self, master ):
 		self.master = master
+		# TODO: if no pref found, show preferences view
+		# TODO: show login/store login and password preferences
 		self.build()
 		DBJob.set( 'helloActionTrigger' )
 	
@@ -88,7 +86,7 @@ class Action:
 	
 	def pickProjectActionCallback( self ):
 		project = self.master.View.projectList().value()
-		self.master.projects.setWindowTitle( project + ' - ' + CONFIG_APPNAME )
+		self.master.projects.setWindowTitle( project + ' - ' + Conf.getConf( 'appname' ) )
 		DBJob.set( 'projectDataActionTrigger', None, project )
 	
 	def sendMessageCallback( self ):
@@ -98,7 +96,7 @@ class Action:
 			return
 		contact = self.master.View.contactList().value()
 		self.master.View.contactItem( contact ).sendTo( message )
-		self.master.View.chatDialog().message( str( time.time() ), CONFIG_SELF, message )
+		self.master.View.chatDialog().message( str( time.time() ), Conf.getConf( 'username' ), message )
 		self.master.View.chatMessage().clear()
 		Wrap.send( contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
@@ -191,7 +189,7 @@ class View:
 	def projects( self ):
 		if not hasattr( self.master, 'projects' ):
 			self.master.projects = QtGui.QWidget()
-			self.master.projects.setWindowTitle( 'Projects' + ' - ' + CONFIG_APPNAME )
+			self.master.projects.setWindowTitle( 'Projects' + ' - ' + Conf.getConf( 'appname' ) )
 			self.master.projects.resize( 550, 450 )
 			self.master.projects.move( 350, 350 )
 		
@@ -234,7 +232,7 @@ class View:
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QtGui.QWidget()
-			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + CONFIG_APPNAME )
+			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + Conf.getConf( 'appname' ) )
 			self.master.chat.resize( 350, 250 )
 			self.master.chat.move( 450, 450 )
 		
@@ -262,7 +260,7 @@ class View:
 		if not hasattr( self.master, 'preferences' ):
 			self.master.preferences = QtGui.QWidget()
 			self.master.preferences.fields = {}
-			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + CONFIG_APPNAME )
+			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + Conf.getConf( 'appname' ) )
 			self.master.preferences.resize( 450, 550 )
 			self.master.preferences.move( 350, 350 )
 		
@@ -510,7 +508,7 @@ class RandomActionThread( QtCore.QThread ):
 			'IZI', 'ELIAS'
 		),
 		'contact':(
-			'Ivan', 'Nick', 'Jack', 'Petr', 'Sam', 'Eugen', 'Alex', 'Bob', 'Viktor', 'Mo', 'Fred', 'Woo', 'Bradley', 'Dmitry', 'Jim', 'Lu', CONFIG_BOT, 
+			'Ivan', 'Nick', 'Jack', 'Petr', 'Sam', 'Eugen', 'Alex', 'Bob', 'Viktor', 'Mo', 'Fred', 'Woo', 'Bradley', 'Dmitry', 'Jim', 'Lu', Conf.getConf( 'bot' ), 
 		),
 		'status':(
 			'online', 'away', 'busy', 'unavailable', 'offline'
@@ -614,14 +612,14 @@ class QContact( QtGui.QRadioButton ):
 		if not ts:
 			ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':CONFIG_SELF, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':Conf.getConf( 'username' ), 'message':message }
 		self.messagesNew[ts] = message
 		self.update()
 	
 	def sendTo( self, message ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':CONFIG_SELF, 'recipient':self.name, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':Conf.getConf( 'username' ), 'recipient':self.name, 'message':message }
 
 
 
@@ -637,7 +635,7 @@ class QChatDialog( QtGui.QTextEdit ):
 	def message( self, ts, sender, message ):
 		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
 				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
-				( sender==CONFIG_SELF and '#000' or '#66f' ),
+				( sender==Conf.getConf( 'username' ) and '#000' or '#66f' ),
 				sender,
 				message.replace( '\n', '<br />' )
 			)
@@ -709,14 +707,14 @@ class QProject( QtGui.QRadioButton ):
 		if not ts:
 			ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':CONFIG_SELF, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':Conf.getConf( 'username' ), 'message':message }
 		self.messagesNew[ts] = message
 		self.update()
 	
 	def sendTo( self, message ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':CONFIG_SELF, 'recipient':self.name, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':Conf.getConf( 'username' ), 'recipient':self.name, 'message':message }
 
 
 class QProjectData( QtGui.QTextEdit ):
@@ -731,7 +729,7 @@ class QProjectData( QtGui.QTextEdit ):
 	def message( self, ts, sender, message ):
 		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
 				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
-				( sender==CONFIG_SELF and '#000' or '#66f' ),
+				( sender==Conf.getConf( 'username' ) and '#000' or '#66f' ),
 				sender,
 				message
 			)
