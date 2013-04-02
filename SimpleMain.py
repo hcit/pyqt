@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # -*- conding: utf-8 -*-
 from random import randint
-import sys, shelve, time
+import sys, shelve, time, datetime
 from unidecode import unidecode
 from PyQt4 import QtGui, QtCore
 
+CONFIG_APPNAME = 'PP Internal Chat'
 CONFIG_SELF = 'Me'
+CONFIG_BOT = 'ppbot'
 
 
 
@@ -29,7 +31,8 @@ class Main( QtGui.QMainWindow ):
 		self.View = View( self )
 		
 		### Thread
-		self.WorkThread = WorkThread( self )
+		self.ListenerThread = ListenerThread( self )
+		self.ExecutionThread = ExecutionThread( self )
 		self.RandomActionThread = RandomActionThread()
 		
 		### Show the MainWindow
@@ -41,6 +44,7 @@ class Action:
 	def __init__( self, master ):
 		self.master = master
 		self.build()
+		DBJob.set( 'contactsActionTrigger' )
 	
 	def build( self ):
 		self.exitAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Exit', self.master )
@@ -48,18 +52,19 @@ class Action:
 		self.exitAction.setStatusTip( 'Exit application' )
 		self.exitAction.triggered.connect( QtGui.qApp.quit )
 		
-		self.listViewAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&List', self.master )
-		self.listViewAction.setShortcut( 'Ctrl+L' )
-		self.listViewAction.setStatusTip( 'List Files' )
-		self.listViewAction.triggered.connect( self.listViewActionCallback )
+		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Projects', self.master )
+		self.projectsAction.setShortcut( 'Ctrl+P' )
+		self.projectsAction.setStatusTip( 'Show projects' )
+		self.projectsAction.triggered.connect( self.projectsActionCallback )
 		
-		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Text', self.master )
-		self.chatAction.setShortcut( 'Ctrl+T' )
-		self.chatAction.setStatusTip( 'Text Editor' )
+		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Chat', self.master )
+		self.chatAction.setShortcut( 'Ctrl+H' )
+		self.chatAction.setStatusTip( 'Chat' )
 		self.chatAction.triggered.connect( self.chatActionCallback )
 	
-	def listViewActionCallback( self ):
-		self.master.View.listView().show()
+	def projectsActionCallback( self ):
+		self.master.View.projects().show()
+		DBJob.set( 'projectListActionTrigger' )
 	
 	def chatActionCallback( self ):
 		self.master.View.chat().show()
@@ -69,8 +74,12 @@ class Action:
 		self.chatActionCallback()
 		self.master.View.chatDialog().clear()
 		for message in self.master.View.contactItem( contact ).messages():
-			
 			self.master.View.chatDialog().message( message['ts'], message['sender'], message['message'] )
+	
+	def pickProjectActionCallback( self ):
+		project = self.master.View.projectList().value()
+		self.master.projects.setWindowTitle( project + ' - ' + CONFIG_APPNAME )
+		DBJob.set( 'projectDataActionTrigger', None, project )
 	
 	def sendMessageCallback( self ):
 		message = self.master.View.chatMessage().toPlainText()
@@ -80,6 +89,14 @@ class Action:
 		self.master.View.contactItem( contact ).sendTo( message )
 		self.master.View.chatDialog().message( str( time.time() ), CONFIG_SELF, message )
 		self.master.View.chatMessage().clear()
+	
+	def projectListActionTrigger( self, projects ):
+		for project in projects:
+			self.master.View.projectItem( project )
+	
+	def projectDataActionTrigger( self, projectData ):
+		project = self.master.View.projectList().value()
+		self.master.View.projectData().show( project, projectData )
 	
 	def statusActionTrigger( self, contact, status ):
 		self.master.View.contactItem( contact, status )
@@ -105,7 +122,7 @@ class Control:
 		self.fileMenuControl = self.menuControl.addMenu( '&File' )
 		self.fileMenuControl.addAction( self.master.Action.exitAction )
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
-		self.viewMenuControl.addAction( self.master.Action.listViewAction )
+		self.viewMenuControl.addAction( self.master.Action.projectsAction )
 		#self.viewMenuControl.addAction( self.master.Action.chatAction )
 
 
@@ -128,9 +145,10 @@ class View:
 		
 		self.master.setCentralWidget( self.master.central )
 	
+	#################### VIEW central ####################
 	def contactList( self, parent=None ):
 		if not hasattr( self, '_contactList' ):
-			self._contactList = QContactList( 'contacts', self.master.central )
+			self._contactList = QContactList( self.master.central )
 			self._contactList.setStyleSheet( 'background:black; color:white' )
 		return self._contactList
 	
@@ -142,7 +160,6 @@ class View:
 		self._contactList.radioList[contact].status = status or self._contactList.radioList[contact].status
 		self._contactList.radioList[contact].update()
 		return self._contactList.radioList[contact]
-			
 	
 	def contactFilter( self, parent=None ):
 		if not hasattr( self, '_contactFilter' ):
@@ -150,36 +167,53 @@ class View:
 			self._contactFilter.setStyleSheet( 'background:black; color:white' )
 		return self._contactFilter
 	
-	def listView( self ):
-		if not hasattr( self.master, 'listView' ):
-			self.master.listView = QtGui.QWidget()
-			self.master.listView.setWindowTitle( 'List' )
-			self.master.listView.setStyleSheet( 'background: blue' )
-			self.master.listView.resize( 350, 250 )
-			self.master.listView.move( 550, 550 )
+	#################### VIEW projects ####################
+	def projects( self ):
+		if not hasattr( self.master, 'projects' ):
+			self.master.projects = QtGui.QWidget()
+			self.master.projects.setWindowTitle( 'Projects' + ' - ' + CONFIG_APPNAME )
+			self.master.projects.resize( 350, 250 )
+			self.master.projects.move( 550, 550 )
 		
-			listViewLeft = QtGui.QWidget( self.master.listView )
-			listViewLeft.setStyleSheet( 'background: black' )
-			layout = QtGui.QVBoxLayout( listViewLeft )
-			layout.addStretch(  )
-			listViewLeft.setLayout( layout )
-		
-			listViewRight = QtGui.QWidget( self.master.listView )
-			listViewRight.setStyleSheet( 'background: white' )
-			layout = QtGui.QVBoxLayout( listViewRight )
-			layout.addStretch(  )
-			listViewRight.setLayout( layout )
-		
-			listViewSplitter = QtGui.QSplitter( QtCore.Qt.Horizontal, self.master.listView )
-			listViewSplitter.addWidget( listViewLeft )
-			listViewSplitter.addWidget( listViewRight )
-		return self.master.listView
-		
+			grid = QtGui.QGridLayout()
+			grid.addWidget( self.projectData( self.master.projects ), 0, 0, 2, 1 )
+			grid.addWidget( self.projectFilter( self.master.projects ), 0, 1 )
+			grid.addWidget( self.projectList( self.master.projects ), 1, 1 )
+			self.master.projects.setLayout( grid )
+		return self.master.projects
+	
+	def projectData( self, parent=None ):
+		if not hasattr( self, '_projectData' ):
+			self._projectData = QProjectData( parent )
+			self._projectData.setMaximumHeight( 1000 )
+		return self._projectData
+	
+	def projectFilter( self, parent=None ):
+		if not hasattr( self, '_projectFilter' ):
+			self._projectFilter = QtGui.QLineEdit( parent )
+			self._projectFilter.setStyleSheet( 'background:black; color:white' )
+		return self._projectFilter
+	
+	def projectList( self, parent=None ):
+		if not hasattr( self, '_projectList' ):
+			self._projectList = QProjectList( self.master.projects )
+			self._projectList.setStyleSheet( 'background:black; color:white' )
+		return self._projectList
+	
+	def projectItem( self, project, status=None ):
+		if not project in self._projectList.radioList.keys():
+			self._projectList.radioList[project] = QProject( project, self._projectList )
+			self._projectList.radioList[project].clicked.connect( self.master.Action.pickProjectActionCallback )
+			self._projectList.layout.addWidget( self._projectList.radioList[project] )
+		self._projectList.radioList[project].status = status or self._projectList.radioList[project].status
+		self._projectList.radioList[project].update()
+		return self._projectList.radioList[project]
+	
+	#################### VIEW chat ####################
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QtGui.QWidget()
-			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - XMPP' )
-			#self.master.chat.setStyleSheet( 'background: green' )
+			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + CONFIG_APPNAME )
 			self.master.chat.resize( 350, 250 )
 			self.master.chat.move( 450, 450 )
 		
@@ -190,114 +224,190 @@ class View:
 		return self.master.chat
 	
 	def chatDialog( self, parent=None ):
-		import datetime
 		if not hasattr( self, '_chatDialog' ):
-			self._chatDialog = QtGui.QTextEdit( parent )
+			self._chatDialog = QChatDialog( parent )
 			self._chatDialog.setMaximumHeight( 1000 )
-			self._chatDialog.setReadOnly(1)
-			setattr( self._chatDialog, 'textCursor', QtGui.QTextCursor( self._chatDialog.document() ) )
-			setattr( self._chatDialog, 'write', lambda text: self._chatDialog.textCursor.insertHtml( text + '<br />' ) )
-			setattr( self._chatDialog, 'message', lambda ts, sender, message: self._chatDialog.write( '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % ( datetime.datetime.fromtimestamp( int( ts.split('.')[0] ) ).strftime('%Y-%m-%d %H:%M:%S'), (sender==CONFIG_SELF and '#000' or '#66f'), sender, message ) ) )
 		return self._chatDialog
 	
 	def chatMessage( self, parent=None ):
 		if not hasattr( self, '_chatMessage' ):
 			self._chatMessage = QChatInput( '', parent )
 			self._chatMessage.setMaximumHeight( 50 )
-			#self._chatMessage.setStyleSheet( 'background: white' )
 			self.master.connect( self._chatMessage, QtCore.SIGNAL( 'sendMessage' ), self.master.Action.sendMessageCallback )
 		return self._chatMessage
 
 
 
-class WorkThread( QtCore.QThread ):
-	_cronPath = 'cron.db'
-	_schedulePath = 'schedule.db'
+class ListenerThread( QtCore.QThread ):
 	def __init__( self, master ):
 		#TODO: create default scheduled tasks if file not exists
 		QtCore.QThread.__init__( self )
 		self.master = master
-		self.schedule = shelve.open( self._schedulePath )
 		self.build()
 	
 	def build( self ):
-		self.master.connect( self, QtCore.SIGNAL( 'respond()' ), self.respond )
+		self.master.connect( self, QtCore.SIGNAL( 'listenerSignal()' ), self.respond )
 		self.start()
 	
 	def run( self ):
 		while True:
-			for ts, task in self.cronGet():
-				self.scheduleSet( ts, task['callback'], *task['arg'], **task['kwarg'] )
-			time.sleep( 0.3 ) # artificial time delay
-			self.emit( QtCore.SIGNAL( 'respond()' ) )
+			for ts, task in DBCron.get():
+				DBSchedule.set( ts, task['callback'], *task['arg'], **task['kwarg'] )
+			time.sleep( 0.3 )
+			self.emit( QtCore.SIGNAL( 'listenerSignal()' ) )
 	
 	def respond( self ):
-		for ts, task in self.scheduleGet():
-			print '::RESPOND', ts, task
+		for ts, task in DBSchedule.get():
+			print '::ListenerThread', ts, task
 			getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
+
+
+
+class ExecutionThread( QtCore.QThread ):
+	def __init__( self, master ):
+		QtCore.QThread.__init__( self )
+		self.master = master
+		self.build()
+	
+	def build( self ):
+		self.master.connect( self, QtCore.SIGNAL( 'executionSignal()' ), self.respond )
+		self.start()
+	
+	def run( self ):
+		while True:
+			for ts, task in DBJob.get():
+				#print '::ExecutionThread', ts, task
+				getattr( self, task['callback'] )( *task['arg'], **task['kwarg'] )
+			time.sleep( 0.4 )
+			#self.emit( QtCore.SIGNAL( 'executionSignal()' ) )
+	
+	def projectListActionTrigger( self ):
+		#TODO: replace with wrapper.projectList
+		RandomActionThread.projectListAction()
+	
+	def projectDataActionTrigger( self, project ):
+		#TODO: replace with wrapper.projectData
+		RandomActionThread.projectDataAction( project )
+	
+	def contactsActionTrigger( self ):
+	#TODO: replace with wrapper.contactList
+		RandomActionThread.contactListAction()
+	
+	def respond( self ):
+		for ts, task in DBJob.get():
+			#print '::ExecutionThread', ts, task
+			getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
+
+
+
+class DBJob:
+	__path = 'job.db'
+	__handle = None
 	
 	@classmethod
-	def cronGet( self ):
-		cron = shelve.open( self._cronPath )
+	def get( cls ):
+		cls.__handle = shelve.open( cls.__path )
 		taskList = []
-		keys = cron.keys()
+		keys = cls.__handle.keys()
 		keys.sort()
 		for ts in keys:
-			task = cron[ts]
-			if float( ts ) < time.time():
-				del cron[ts]
-				cron[str( time.time() + task['period'] )] = task
-				taskList.append( ( ts, task ) )
-				self.scheduleSet( task['callback'], None, *task['arg'], **task['kwarg'] )
-		cron.sync()
-		cron.close()
+			task = cls.__handle[ts]
+			del cls.__handle[ts]
+			taskList.append( ( ts, task ) )
+		cls.__handle.sync()
+		cls.__handle.close()
 		return taskList
 	
 	@classmethod
-	def cronSet( self, callback, period, *arg, **kwarg ):
-		cron = shelve.open( self._cronPath )
-		cron[str( time.time() )] = {
+	def set( cls, callback, ts=None, *arg, **kwarg ):
+		if not ts:
+			ts = time.time()
+		cls.__handle = shelve.open( cls.__path )
+		cls.__handle[str( ts )] = {
+			'callback':callback,
+			'arg':arg,
+			'kwarg':kwarg
+		}
+		cls.__handle.sync()
+		cls.__handle.close()
+
+
+
+class DBCron:
+	__path = 'cron.db'
+	__handle = None
+	
+	@classmethod
+	def get( cls ):
+		cls.__handle = shelve.open( cls.__path )
+		taskList = []
+		keys = cls.__handle.keys()
+		keys.sort()
+		for ts in keys:
+			task = cls.__handle[ts]
+			if float( ts ) < time.time():
+				del cls.__handle[ts]
+				cls.__handle[str( time.time() + task['period'] )] = task
+				taskList.append( ( ts, task ) )
+				#cls.scheduleSet( task['callback'], None, *task['arg'], **task['kwarg'] )
+		cls.__handle.sync()
+		cls.__handle.close()
+		return taskList
+	
+	@classmethod
+	def set( cls, callback, period, *arg, **kwarg ):
+		cls.__handle = shelve.open( cls.__path )
+		cls.__handle[str( time.time() )] = {
 			'period':period,
 			'callback':callback,
 			'arg':arg,
 			'kwarg':kwarg
 		}
-		cron.sync()
-		cron.close()
+		cls.__handle.sync()
+		cls.__handle.close()
+
+
+
+class DBSchedule:
+	__path = 'schedule.db'
+	__handle = None
 	
 	@classmethod
-	def scheduleGet( self ):
-		schedule = shelve.open( self._schedulePath )
+	def get( cls ):
+		cls.__handle = shelve.open( cls.__path )
 		taskList = []
-		keys = schedule.keys()
+		keys = cls.__handle.keys()
 		keys.sort()
 		for ts in keys:
-			task = schedule[ts]
-			del schedule[ts]
+			task = cls.__handle[ts]
+			del cls.__handle[ts]
 			taskList.append( ( ts, task ) )
-		schedule.sync()
-		schedule.close()
+		cls.__handle.sync()
+		cls.__handle.close()
 		return taskList
 	
 	@classmethod
-	def scheduleSet( self, callback, ts=None, *arg, **kwarg ):
+	def set( cls, callback, ts=None, *arg, **kwarg ):
 		if not ts:
 			ts = time.time()
-		schedule = shelve.open( self._schedulePath )
-		schedule[str( ts )] = {
+		cls.__handle = shelve.open( cls.__path )
+		cls.__handle[str( ts )] = {
 			'callback':callback,
 			'arg':arg,
 			'kwarg':kwarg
 		}
-		schedule.sync()
-		schedule.close()
+		cls.__handle.sync()
+		cls.__handle.close()
 
 
 
 class RandomActionThread( QtCore.QThread ):
 	randomData = {
+		'project':(
+			'IZI', 'ELIAS'
+		),
 		'contact':(
-			'Ivan', 'Nick', 'Jack', 'Petr', 'bot'
+			'Ivan', 'Nick', 'Jack', 'Petr', 'Sam', 'Eugen', 'Alex', 'Bob', 'Viktor', 'Mo', 'Fred', 'Woo', 'Bradley', 'Dmitry', 'Jim', 'Lu', CONFIG_BOT, 
 		),
 		'status':(
 			'online', 'away', 'busy', 'unavailable', 'offline'
@@ -310,6 +420,19 @@ class RandomActionThread( QtCore.QThread ):
 	@classmethod
 	def getRandom( cls, dataType ):
 		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
+	
+	@classmethod
+	def contactListAction( cls ):
+		for contact in cls.randomData['contact']:
+			DBSchedule.set( 'statusActionTrigger', None, contact, cls.getRandom( 'status' ) )
+	
+	@classmethod
+	def projectListAction( cls ):
+		DBSchedule.set( 'projectListActionTrigger', None, cls.randomData['project'] )
+	
+	@classmethod
+	def projectDataAction( cls, project ):
+		DBSchedule.set( 'projectDataActionTrigger', None, '{"name":"test","lead":"Someone","members":["one","two","three"]}' )
 	
 	@classmethod
 	def statusActionTrigger( cls ):
@@ -341,15 +464,14 @@ class RandomActionThread( QtCore.QThread ):
 			if randint( 0, 2 ) == 1:
 				callback = self.getRandom( 'callback' )
 				arg, kwarg  = getattr( self, callback )()
-				#print '::TASK', callback, None, arg, kwarg
-				WorkThread.scheduleSet( callback, None, *arg, **kwarg )
-			time.sleep( 0.4 )
+				DBSchedule.set( callback, None, *arg, **kwarg )
+			time.sleep( 0.5 )
 
 
 
 class QContactList( QtGui.QGroupBox ):
-	def __init__( self, name, parent ):
-		super( self.__class__, self ).__init__( name, parent )
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( parent )
 		self.radioList = {}
 		self.contactListItems = {}
 		self.layout = QtGui.QVBoxLayout()
@@ -373,7 +495,7 @@ class QContact( QtGui.QRadioButton ):
 		self.status = '?'
 	
 	def update( self ):
-		if self.isChecked():#if self.parent.value() == self.name:
+		if self.isChecked():
 			self.messagesNew = {}
 		self.setText( '%s [%s] %s' % (
 			self.name,
@@ -382,7 +504,6 @@ class QContact( QtGui.QRadioButton ):
 		) )
 	
 	def messages( self, since=None ):
-		#self.messagesNew = []
 		self.messagesTime.sort()
 		return [{ 'ts':ts, 'sender':self.messagesList[ts]['sender'], 'message':self.messagesList[ts]['message'] } for ts in self.messagesTime]
 	
@@ -398,6 +519,26 @@ class QContact( QtGui.QRadioButton ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
 		self.messagesList[ts] = { 'ts':str( ts ), 'sender':CONFIG_SELF, 'recipient':self.name, 'message':message }
+
+
+
+class QChatDialog( QtGui.QTextEdit ):
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( parent )
+		self.textCursor = QtGui.QTextCursor( self.document() )
+		self.setReadOnly( 1 )
+	
+	def write( self, text ):
+		self.textCursor.insertHtml( text + '<br />' )
+	
+	def message( self, ts, sender, message ):
+		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
+				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
+				( sender==CONFIG_SELF and '#000' or '#66f' ),
+				sender,
+				message
+			)
+		self.write( text )
 
 
 
@@ -420,6 +561,97 @@ class QChatInput( QtGui.QTextEdit ):
 		if event.key() == QtCore.Qt.Key_Shift:
 			self.__sendMessageOnReturn = True
 		QtGui.QTextEdit.keyPressEvent( self, event )
+
+
+
+class QProjectList( QtGui.QGroupBox ):
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( parent )
+		self.radioList = {}
+		self.projectListItems = {}
+		self.layout = QtGui.QVBoxLayout()
+		self.setLayout( self.layout )
+	
+	def value( self ):
+		for k, w in self.radioList.items():
+			if w.isChecked():
+				return k
+
+
+
+class QProject( QtGui.QRadioButton ):
+	def __init__( self, name, parent ):
+		super( self.__class__, self ).__init__( '' )
+		self.name = name
+		self.parent = parent
+		self.messagesNew = {}
+		self.messagesTime = []
+		self.messagesList = {}
+		self.status = '?'
+	
+	def update( self ):
+		if self.isChecked():
+			self.messagesNew = {}
+		self.setText( '%s [%s] %s' % (
+			self.name,
+			self.status,
+			len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or ''
+		) )
+	
+	def messages( self, since=None ):
+		self.messagesTime.sort()
+		return [{ 'ts':ts, 'sender':self.messagesList[ts]['sender'], 'message':self.messagesList[ts]['message'] } for ts in self.messagesTime]
+	
+	def receiveFrom( self, message, ts=None ):
+		if not ts:
+			ts = str( time.time() )
+		self.messagesTime.append( ts )
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':CONFIG_SELF, 'message':message }
+		self.messagesNew[ts] = message
+		self.update()
+	
+	def sendTo( self, message ):
+		ts = str( time.time() )
+		self.messagesTime.append( ts )
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':CONFIG_SELF, 'recipient':self.name, 'message':message }
+
+
+class QProjectData( QtGui.QTextEdit ):
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( parent )
+		self.textCursor = QtGui.QTextCursor( self.document() )
+		self.setReadOnly( 1 )
+	
+	def write( self, text ):
+		self.textCursor.insertHtml( text + '<br />' )
+	
+	def message( self, ts, sender, message ):
+		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
+				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
+				( sender==CONFIG_SELF and '#000' or '#66f' ),
+				sender,
+				message
+			)
+		self.write( text )
+	
+	def show( self, project, projectData ):
+		import json
+		self.clear()
+		data = '<table>'
+		for k, v in json.loads( projectData ).items():
+			data += '<tr>'
+			data += '<th>' + str( k ) + '</th>'
+			if type( v ) == list:
+				data += '<td><ul>' + ''.join( ['<li>' + str( item ) + '</li>' for item in v] ) + '</ul></td>'
+			else:
+				data += '<td>' + str( v ) + '</td>'
+			data += '</tr>'
+		data += '</table>'
+		text =  '<span style="font-weight:bold; color:#66f;">[%s]</span><br />%s<br />' % (
+				project,
+				data
+			)
+		self.write( text )
 
 
 
