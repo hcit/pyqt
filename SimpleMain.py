@@ -66,26 +66,29 @@ class Action:
 	
 	def pickContactActionCallback( self ):
 		contact = self.master.View.contactList().value()
-		#print '::pickContactActionCallback', contact, self.master.View.contactItem( contact ).messages()
 		self.chatActionCallback()
 		self.master.View.chatDialog().clear()
 		for message in self.master.View.contactItem( contact ).messages():
+			
 			self.master.View.chatDialog().message( message['ts'], message['sender'], message['message'] )
 	
-	def sendMessageCallback( self, message ):
-		print '::SENDMESSAGE', self.master.View.chatMessage().text()
-		self.master.View.chatMessage().setText( '' )
-		return
-		contact = self.master.View.contactList.value()
+	def sendMessageCallback( self ):
+		message = self.master.View.chatMessage().toPlainText()
+		if not message:
+			return
+		contact = self.master.View.contactList().value()
 		self.master.View.contactItem( contact ).sendTo( message )
 		self.master.View.chatDialog().message( str( time.time() ), CONFIG_SELF, message )
+		self.master.View.chatMessage().clear()
 	
 	def statusActionTrigger( self, contact, status ):
 		self.master.View.contactItem( contact, status )
 	
 	def messageActionTrigger( self, contact, message ):
 		self.master.View.contactItem( contact ).receiveFrom( message, str( time.time() ) )
-		self.master.View.chatDialog().message( time.time(), contact, message )
+		#print '::messageAction', self.master.View.contactList().value()
+		if self.master.View.contactList().value() == contact:
+			self.master.View.chatDialog().message( time.time(), contact, message )
 	
 	def reportActionTrigger( self ):
 		pass
@@ -128,14 +131,6 @@ class View:
 	def contactList( self, parent=None ):
 		if not hasattr( self, '_contactList' ):
 			self._contactList = QContactList( 'contacts', self.master.central )
-			"""
-			self._contactList = QtGui.QGroupBox( 'Contacts', parent )
-			self._contactList.layout = QtGui.QVBoxLayout()
-			self._contactList.setLayout( self._contactList.layout )
-			self._contactList.radioList = {}
-			setattr( self._contactList, 'value', lambda:''.join( [k for k, w in self._contactList.radioList.items() if w.isChecked()] ) )
-			self._contactList.contactListItems = {}
-			"""
 			self._contactList.setStyleSheet( 'background:black; color:white' )
 		return self._contactList
 	
@@ -144,18 +139,6 @@ class View:
 			self._contactList.radioList[contact] = QContact( contact, self._contactList )
 			self._contactList.radioList[contact].clicked.connect( self.master.Action.pickContactActionCallback )
 			self._contactList.layout.addWidget( self._contactList.radioList[contact] )
-			"""
-			self._contactList.radioList[contact] = QtGui.QRadioButton( '' )
-			self._contactList.radioList[contact].messagesNew = []
-			self._contactList.radioList[contact].messagesTime = []
-			self._contactList.radioList[contact].messagesList = {}
-			setattr( self._contactList.radioList[contact], 'update', lambda: self._contactList.radioList[contact].setText( '%s [%s] %s' % ( contact, self._contactList.radioList[contact].status, ( len( self._contactList.radioList[contact].messagesNew ) and '('+str( len( self._contactList.radioList[contact].messagesNew ) )+')' or '') ) ) )
-			setattr( self._contactList.radioList[contact], 'messages', lambda: setattr( self._contactList.radioList[contact], 'messagesNew', [] ) or self._contactList.radioList[contact].messagesTime.sort() or [(ts,self._contactList.radioList[contact].messagesList[ts]) for ts in self._contactList.radioList[contact].messagesTime] )
-			setattr( self._contactList.radioList[contact], 'messageSet', lambda ts,message: self._contactList.radioList[contact].messagesTime.append(ts) or self._contactList.radioList[contact].messagesList.update( {ts:message} ) or self._contactList.radioList[contact].messagesNew.append( {ts:message} ) or self._contactList.radioList[contact].update() )
-			self._contactList.radioList[contact].clicked.connect( self.master.Action.pickContactActionCallback )
-			self._contactList.layout.addWidget( self._contactList.radioList[contact] )
-			self._contactList.radioList[contact].status = '?'
-			"""
 		self._contactList.radioList[contact].status = status or self._contactList.radioList[contact].status
 		self._contactList.radioList[contact].update()
 		return self._contactList.radioList[contact]
@@ -207,20 +190,22 @@ class View:
 		return self.master.chat
 	
 	def chatDialog( self, parent=None ):
+		import datetime
 		if not hasattr( self, '_chatDialog' ):
 			self._chatDialog = QtGui.QTextEdit( parent )
 			self._chatDialog.setMaximumHeight( 1000 )
 			self._chatDialog.setReadOnly(1)
 			setattr( self._chatDialog, 'textCursor', QtGui.QTextCursor( self._chatDialog.document() ) )
-			setattr( self._chatDialog, 'write', lambda text: self._chatDialog.textCursor.insertText( text + '\n' ) )
-			setattr( self._chatDialog, 'message', lambda ts, sender, message: self._chatDialog.write( '[%s] %s\n%s\n' % ( ts, sender, message ) ) )
+			setattr( self._chatDialog, 'write', lambda text: self._chatDialog.textCursor.insertHtml( text + '<br />' ) )
+			setattr( self._chatDialog, 'message', lambda ts, sender, message: self._chatDialog.write( '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % ( datetime.datetime.fromtimestamp( int( ts.split('.')[0] ) ).strftime('%Y-%m-%d %H:%M:%S'), (sender==CONFIG_SELF and '#000' or '#66f'), sender, message ) ) )
 		return self._chatDialog
 	
 	def chatMessage( self, parent=None ):
 		if not hasattr( self, '_chatMessage' ):
-			self._chatMessage = QtGui.QLineEdit( '', parent )
-			self._chatMessage.connect( self._chatMessage, QtCore.SIGNAL( 'returnPressed()' ), self.master.Action.sendMessageCallback )
-			self._chatMessage.setStyleSheet( 'background: white' )
+			self._chatMessage = QChatInput( '', parent )
+			self._chatMessage.setMaximumHeight( 50 )
+			#self._chatMessage.setStyleSheet( 'background: white' )
+			self.master.connect( self._chatMessage, QtCore.SIGNAL( 'sendMessage' ), self.master.Action.sendMessageCallback )
 		return self._chatMessage
 
 
@@ -249,7 +234,7 @@ class WorkThread( QtCore.QThread ):
 	def respond( self ):
 		for ts, task in self.scheduleGet():
 			print '::RESPOND', ts, task
-			getattr( self.master.Action, task['callback']+'Trigger' )( *task['arg'], **task['kwarg'] )
+			getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
 	
 	@classmethod
 	def cronGet( self ):
@@ -318,7 +303,7 @@ class RandomActionThread( QtCore.QThread ):
 			'online', 'away', 'busy', 'unavailable', 'offline'
 		),
 		'callback':(
-			'statusAction', 'messageAction', 'reportAction'
+			'statusActionTrigger', 'messageActionTrigger', 'reportActionTrigger'
 		)
 	}
 	
@@ -327,20 +312,20 @@ class RandomActionThread( QtCore.QThread ):
 		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
 	
 	@classmethod
-	def statusAction( cls ):
+	def statusActionTrigger( cls ):
 		contact = cls.getRandom( 'contact' )
 		status = cls.getRandom( 'status' )
 		return ( [ contact, status ], {} )
 	
 	@classmethod
-	def messageAction( cls ):
+	def messageActionTrigger( cls ):
 		contact = cls.getRandom( 'contact' )
 		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-     '
 		message = ''.join( [letters[randint( 0, len( letters ) - 1 )] for i in range( 0, randint( 1, 100 ) )] )
 		return ( [ contact, message ], {} )
 	
 	@classmethod
-	def reportAction( cls ):
+	def reportActionTrigger( cls ):
 		return ( [], {} )
 	
 	def __init__( self ):
@@ -356,7 +341,7 @@ class RandomActionThread( QtCore.QThread ):
 			if randint( 0, 2 ) == 1:
 				callback = self.getRandom( 'callback' )
 				arg, kwarg  = getattr( self, callback )()
-				print '::TASK', callback, None, arg, kwarg
+				#print '::TASK', callback, None, arg, kwarg
 				WorkThread.scheduleSet( callback, None, *arg, **kwarg )
 			time.sleep( 0.4 )
 
@@ -388,7 +373,7 @@ class QContact( QtGui.QRadioButton ):
 		self.status = '?'
 	
 	def update( self ):
-		if self.parent.value() == self.name:
+		if self.isChecked():#if self.parent.value() == self.name:
 			self.messagesNew = {}
 		self.setText( '%s [%s] %s' % (
 			self.name,
@@ -399,7 +384,7 @@ class QContact( QtGui.QRadioButton ):
 	def messages( self, since=None ):
 		#self.messagesNew = []
 		self.messagesTime.sort()
-		return [( ts, self.messagesList[ts]['sender'], self.messagesList[ts]['message'] ) for ts in self.messagesTime]
+		return [{ 'ts':ts, 'sender':self.messagesList[ts]['sender'], 'message':self.messagesList[ts]['message'] } for ts in self.messagesTime]
 	
 	def receiveFrom( self, message, ts=None ):
 		if not ts:
@@ -413,6 +398,28 @@ class QContact( QtGui.QRadioButton ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
 		self.messagesList[ts] = { 'ts':str( ts ), 'sender':CONFIG_SELF, 'recipient':self.name, 'message':message }
+
+
+
+class QChatInput( QtGui.QTextEdit ):
+	def __init__( self, text, parent ):
+		super( self.__class__, self ).__init__( text, parent )
+		self.parent = parent
+		self.__sendMessageOnReturn = True
+	
+	def keyPressEvent( self, event ):
+		if event.key() == QtCore.Qt.Key_Shift:
+			self.__sendMessageOnReturn = False
+		elif event.key() == QtCore.Qt.Key_Return:
+			if self.__sendMessageOnReturn:
+				self.emit( QtCore.SIGNAL( 'sendMessage' ) )
+				return
+		QtGui.QTextEdit.keyPressEvent( self, event )
+	
+	def keyReleaseEvent( self, event ):
+		if event.key() == QtCore.Qt.Key_Shift:
+			self.__sendMessageOnReturn = True
+		QtGui.QTextEdit.keyPressEvent( self, event )
 
 
 
