@@ -44,7 +44,6 @@ class Action:
 		# TODO: if no pref found, show preferences view
 		# TODO: show login/store login and password preferences
 		self.build()
-		DBJob.set( 'helloActionTrigger' )
 	
 	def build( self ):
 		self.exitAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Exit', self.master )
@@ -75,6 +74,12 @@ class Action:
 	def logoutActionCallback( self ):
 		DBConf.set( 'username', '' )
 		DBConf.set( 'passwd', '' )
+		self.master.central().hide()
+		self.master.login().show()
+	
+	def loginActionCallback( self ):
+		#self.master.central().hide()
+		self.master.View.login().show()
 	
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
@@ -110,6 +115,11 @@ class Action:
 		DBJob.set( 'sendMessageActionTrigger', None, contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 		#Wrap.send( contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
+	def loginSubmitCallback( self ):
+		for k, v in self.master.View.login().fields.items():
+			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
+			DBJob.set( 'connectActionTrigger' )
+	
 	def preferencesSubmitCallback( self ):
 		for k, v in self.master.View.preferences().fields.items():
 			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
@@ -133,6 +143,15 @@ class Action:
 		self.master.View.contactItem( contact ).receiveFrom( message, str( time.time() ) )
 		if self.master.View.contactList().value() == contact:
 			self.master.View.chatDialog().message( time.time(), contact, message )
+	
+	def errorActionTrigger( self, e ):
+		self.master.Action.loginActionCallback()
+		self.master.View.login().status.setText( str( e ) )
+	
+	def successActionTrigger( self ):
+		self.master.View.login().hide()
+		self.master.View.central().show()
+		DBJob.set( 'helloActionTrigger' )
 	
 	def reportActionTrigger( self ):
 		pass
@@ -161,8 +180,9 @@ class View:
 		self.build()
 	
 	def build( self ):
-		# TODO: check whether to show login or contacts
-		self.central().show()
+		#self.login().show()
+		#self.central().show()
+		self.login().show()
 	
 	#################### VIEW central ####################
 	def central( self ):
@@ -199,6 +219,46 @@ class View:
 			self._contactFilter = QtGui.QLineEdit( parent )
 			self._contactFilter.setStyleSheet( 'background:black; color:white' )
 		return self._contactFilter
+	
+	#################### VIEW login ####################
+	def login( self ):
+		if not hasattr( self.master, 'login' ):
+			self.master.login = QtGui.QWidget()
+			self.master.login.fields = {}
+			self.master.login.setWindowTitle( 'Login' + ' - ' + DBConf.get( 'appname' ) )
+			self.master.login.resize( 450, 200 )
+			self.master.login.move( 350, 350 )
+		
+			grid = QtGui.QGridLayout()
+			
+			self.master.login.status = QtGui.QLabel( 'Please enter your login and password' )
+			grid.addWidget( self.master.login.status, 0, 0, 2, 2 )
+			
+			grid.addWidget( QtGui.QLabel( 'username' ), 2, 0 )
+			grid.addWidget( self.loginField( self.master.login, 'username', DBConf.get( 'username' ) ), 2, 1 )
+			
+			grid.addWidget( QtGui.QLabel( 'password' ), 3, 0 )
+			grid.addWidget( self.loginField( self.master.login, 'passwd', DBConf.get( 'passwd' ) ), 3, 1 )
+			
+			self.master.login.submit = QtGui.QPushButton( 'Login', self.master.login )
+			self.master.connect( self.master.login.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.loginSubmitCallback )
+			grid.addWidget( self.master.login.submit, 4, 0 )
+			
+			self.master.login.quit = QtGui.QPushButton( 'Cancel', self.master.login )
+			self.master.connect( self.master.login.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
+			grid.addWidget( self.master.login.quit, 4, 1 )
+			
+			self.master.login.preferences = QtGui.QPushButton( 'Preferences', self.master.login )
+			self.master.connect( self.master.login.preferences, QtCore.SIGNAL( 'clicked()' ), lambda:self.master.View.login().hide() or self.master.Action.preferencesActionCallback() )
+			grid.addWidget( self.master.login.preferences, 5, 0, 2 ,1 )
+			
+			self.master.login.setLayout( grid )
+		return self.master.login
+	
+	def loginField( self, parent, key, value='' ):
+		if not key in self.master.login.fields.keys():
+			self.master.login.fields[key] = QtGui.QLineEdit( str( value ), parent )
+		return self.master.login.fields[key]
 	
 	#################### VIEW projects ####################
 	def projects( self ):
@@ -248,8 +308,8 @@ class View:
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QtGui.QWidget()
 			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + DBConf.get( 'appname' ) )
-			self.master.chat.resize( 350, 250 )
-			self.master.chat.move( 450, 450 )
+			self.master.chat.resize( 600, 450 )
+			self.master.chat.move( 350, 350 )
 		
 			grid = QtGui.QGridLayout()
 			grid.addWidget( self.chatDialog( self.master.chat ), 0, 0 )
@@ -302,6 +362,7 @@ class View:
 			self.master.preferences.fields[key] = QtGui.QLineEdit( str( value ), parent )
 		return self.master.preferences.fields[key]
 	
+	"""
 	def projectFilter( self, parent=None ):
 		if not hasattr( self, '_projectFilter' ):
 			self._projectFilter = QtGui.QLineEdit( parent )
@@ -322,6 +383,7 @@ class View:
 		self._projectList.radioList[project].status = status or self._projectList.radioList[project].status
 		self._projectList.radioList[project].update()
 		return self._projectList.radioList[project]
+	"""
 
 
 

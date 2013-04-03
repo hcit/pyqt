@@ -45,9 +45,17 @@ class Wrap:
 		return [cls._dbs[filename][key] for key in keys]
 	
 	@classmethod
-	def hello( cls ):
+	def connect( cls ):
 		Transport.listener = cls
-		Transport.sendMessage( DBConf.get( 'username' ), 'online' )
+		res = Transport._connect()
+		if res:
+			DBSchedule.set( 'successActionTrigger', None )
+		else:
+			DBSchedule.set( 'errorActionTrigger', None, 'Bad login' )
+	
+	@classmethod
+	def hello( cls ):
+		Transport.sendMessage( DBConf.get( 'bot' ), 'online' )
 	
 	@classmethod
 	def help( cls ):
@@ -60,8 +68,8 @@ class Wrap:
 	
 	@classmethod
 	def messageCallbackHook( cls, sender, message ):
-		if not sender in Transport.getContactList().keys():
-			sender = DBConf.get( 'bot' )
+		#if not sender in Transport.getContactList().keys():
+		#	sender = DBConf.get( 'bot' )
 		if cls.messageCallbackHandler is not None:
 			cls.messageCallbackHandler( sender, message )
 			cls.messageCallbackHandler = None
@@ -73,6 +81,10 @@ class Wrap:
 	def presenceCallbackHook( cls, contact, status ):
 		DBSchedule.set( 'statusActionTrigger', None, contact, status )
 		#TODO??????????????? cls.refreshContactList()
+	
+	@classmethod
+	def errorCallbackHook( cls, e ):
+		DBSchedule.set( 'errorActionTrigger', None, str( e ) )
 	
 	@classmethod
 	def contacts( cls ):

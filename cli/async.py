@@ -48,6 +48,9 @@ class ExecutionThread( QtCore.QThread ):
 			time.sleep( 0.4 )
 			#self.emit( QtCore.SIGNAL( 'executionSignal()' ) )
 	
+	def connectActionTrigger( self ):
+		Wrap.connect()
+	
 	def helloActionTrigger( self ):
 		Wrap.hello()
 	

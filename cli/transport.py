@@ -7,6 +7,7 @@ from db import DBConf
 class Transport:
 	_client = None
 	_roster = None
+	_status = None
 	_contactList = {}
 	listener = None
 	
@@ -19,17 +20,25 @@ class Transport:
 		return True
 	
 	@classmethod
+	def errorCallback( cls, e ):
+		return True
+	
+	@classmethod
 	def _connect( cls ):
 		"""Set up a connection to xmpp server. Authenticate"""
-		cls._client = xmpp.Client( DBConf.get( 'server' ) )
+		cls._client = xmpp.Client( DBConf.get( 'server' ), debug=[] )
 		cls._client.connect( server=( DBConf.get( 'server' ), DBConf.get( 'port' ) ) )
-		cls._client.auth( DBConf.get( 'username' ), DBConf.get( 'passwd' ), DBConf.get( 'nickname' ) )
+		cls._status = cls._client.auth( DBConf.get( 'username' ), DBConf.get( 'passwd' ), DBConf.get( 'nickname' ) ) and True
+		if cls._status is None:
+			cls._client = None
+			return None
 		cls._client.RegisterHandler( 'message', cls.getMessage )
 		cls._client.sendInitPresence(requestRoster=1)
 		cls._set_process()
 		cls._get_roster()
-		cls.sendMessage( DBConf.get( 'username' ), 'online' )
+		#cls.sendMessage( DBConf.get( 'username' ), 'online' )
 		cls._client.RegisterHandler( 'presence', cls.getPresence )
+		return True
 	
 	@classmethod
 	def _get_client( cls ):
@@ -79,6 +88,12 @@ class Transport:
 		return cls._contactList
 	
 	@classmethod
+	def connectionError( cls, e ):
+		if cls.listener and hasattr( cls.listener, 'errorCallbackHook' ):
+			cls.listener.errorCallbackHook( e )
+		cls.errorCallback( e )
+	
+	@classmethod
 	def _get_roster( cls ):
 		if cls._roster is None:
 			try:
@@ -97,4 +112,8 @@ class Transport:
 	@classmethod
 	def _process( cls, arg=1 ):
 		while 1:
-			cls._get_client().Process( arg )
+			try:
+				cls._get_client().Process( arg )
+			except ValueError as e:
+				cls.connectionError( e )
+				
