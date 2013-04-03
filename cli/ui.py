@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- conding: utf-8 -*-
-from random import randint
-import sys, shelve, time, datetime
-from unidecode import unidecode
+import sys, time, datetime
 from PyQt4 import QtGui, QtCore
-from wrap import Wrap
-from conf import Conf
+
+#from wrap import Wrap
+from async import ListenerThread, ExecutionThread
+from db import DBConf, DBJob, DBCron, DBSchedule
 
 
 
@@ -52,20 +52,29 @@ class Action:
 		self.exitAction.setStatusTip( 'Exit application' )
 		self.exitAction.triggered.connect( QtGui.qApp.quit )
 		
+		self.logoutAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'L&og out', self.master )
+		self.logoutAction.setShortcut( 'Ctrl+O' )
+		self.logoutAction.setStatusTip( 'Log out' )
+		self.logoutAction.triggered.connect( self.logoutActionCallback )
+		
 		self.preferencesAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Preferences', self.master )
-		self.preferencesAction.setShortcut( 'Ctrl+R' )
+		self.preferencesAction.setShortcut( 'Ctrl+P' )
 		self.preferencesAction.setStatusTip( 'Preferences' )
 		self.preferencesAction.triggered.connect( self.preferencesActionCallback )
 		
-		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Projects', self.master )
-		self.projectsAction.setShortcut( 'Ctrl+P' )
+		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'P&rojects', self.master )
+		self.projectsAction.setShortcut( 'Ctrl+R' )
 		self.projectsAction.setStatusTip( 'Show projects' )
 		self.projectsAction.triggered.connect( self.projectsActionCallback )
 		
-		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Chat', self.master )
+		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'C&hat', self.master )
 		self.chatAction.setShortcut( 'Ctrl+H' )
 		self.chatAction.setStatusTip( 'Chat' )
 		self.chatAction.triggered.connect( self.chatActionCallback )
+	
+	def logoutActionCallback( self ):
+		DBConf.set( 'username', '' )
+		DBConf.set( 'passwd', '' )
 	
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
@@ -86,7 +95,7 @@ class Action:
 	
 	def pickProjectActionCallback( self ):
 		project = self.master.View.projectList().value()
-		self.master.projects.setWindowTitle( project + ' - ' + Conf.getConf( 'appname' ) )
+		self.master.projects.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
 		DBJob.set( 'projectDataActionTrigger', None, project )
 	
 	def sendMessageCallback( self ):
@@ -96,13 +105,14 @@ class Action:
 			return
 		contact = self.master.View.contactList().value()
 		self.master.View.contactItem( contact ).sendTo( message )
-		self.master.View.chatDialog().message( str( time.time() ), Conf.getConf( 'username' ), message )
+		self.master.View.chatDialog().message( str( time.time() ), DBConf.get( 'username' ), message )
 		self.master.View.chatMessage().clear()
-		Wrap.send( contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+		DBJob.set( 'sendMessageActionTrigger', None, contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+		#Wrap.send( contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
 	def preferencesSubmitCallback( self ):
 		for k, v in self.master.View.preferences().fields.items():
-			Conf.setConf( k, type( Conf.getConf( k ) )( v.text() ) )
+			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
 			self.master.View.preferences().hide()
 	
 	def preferencesCancelCallback( self ):
@@ -151,19 +161,24 @@ class View:
 		self.build()
 	
 	def build( self ):
-		self.master.central = QtGui.QWidget()
-		self.master.central.setStyleSheet( 'background: white' )
-		self.master.central.resize( 250, 150 )
-		self.master.central.move( 450, 450 )
-		
-		grid = QtGui.QGridLayout()
-		grid.addWidget( self.contactFilter( self.master.central ), 0, 0 )
-		grid.addWidget( self.contactList( self.master.central ), 1, 0 )
-		self.master.central.setLayout( grid )
-		
-		self.master.setCentralWidget( self.master.central )
+		# TODO: check whether to show login or contacts
+		self.central().show()
 	
 	#################### VIEW central ####################
+	def central( self ):
+		if not hasattr( self.master, 'central' ):
+			self.master.central = QtGui.QWidget()
+			self.master.central.setStyleSheet( 'background: white' )
+			self.master.central.resize( 250, 150 )
+			self.master.central.move( 450, 450 )
+		
+			grid = QtGui.QGridLayout()
+			grid.addWidget( self.contactFilter( self.master.central ), 0, 0 )
+			grid.addWidget( self.contactList( self.master.central ), 1, 0 )
+			self.master.central.setLayout( grid )
+			self.master.setCentralWidget( self.master.central )
+		return self.master.central
+	
 	def contactList( self, parent=None ):
 		if not hasattr( self, '_contactList' ):
 			self._contactList = QContactList( self.master.central )
@@ -189,7 +204,7 @@ class View:
 	def projects( self ):
 		if not hasattr( self.master, 'projects' ):
 			self.master.projects = QtGui.QWidget()
-			self.master.projects.setWindowTitle( 'Projects' + ' - ' + Conf.getConf( 'appname' ) )
+			self.master.projects.setWindowTitle( 'Projects' + ' - ' + DBConf.get( 'appname' ) )
 			self.master.projects.resize( 550, 450 )
 			self.master.projects.move( 350, 350 )
 		
@@ -232,7 +247,7 @@ class View:
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QtGui.QWidget()
-			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + Conf.getConf( 'appname' ) )
+			self.master.chat.setWindowTitle( self.master.View.contactList().value() + ' - ' + DBConf.get( 'appname' ) )
 			self.master.chat.resize( 350, 250 )
 			self.master.chat.move( 450, 450 )
 		
@@ -260,13 +275,13 @@ class View:
 		if not hasattr( self.master, 'preferences' ):
 			self.master.preferences = QtGui.QWidget()
 			self.master.preferences.fields = {}
-			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + Conf.getConf( 'appname' ) )
+			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + DBConf.get( 'appname' ) )
 			self.master.preferences.resize( 450, 550 )
 			self.master.preferences.move( 350, 350 )
 		
 			grid = QtGui.QGridLayout()
 			n = 0
-			for key, value in Conf.listConf():
+			for key, value in DBConf.list():
 				grid.addWidget( QtGui.QLabel( key ), n, 0 )
 				grid.addWidget( self.preferencesField( self.master.preferences, key, value ), n, 1 )
 				n += 1
@@ -310,6 +325,7 @@ class View:
 
 
 
+"""
 class ListenerThread( QtCore.QThread ):
 	def __init__( self, master ):
 		#TODO: create default scheduled tasks if file not exists
@@ -375,6 +391,76 @@ class ExecutionThread( QtCore.QThread ):
 
 
 
+class RandomActionThread( QtCore.QThread ):
+	randomData = {
+		'project':(
+			'IZI', 'ELIAS'
+		),
+		'contact':(
+			'Ivan', 'Nick', 'Jack', 'Petr', 'Sam', 'Eugen', 'Alex', 'Bob', 'Viktor', 'Mo', 'Fred', 'Woo', 'Bradley', 'Dmitry', 'Jim', 'Lu', DBConf.get( 'bot' ), 
+		),
+		'status':(
+			'online', 'away', 'busy', 'unavailable', 'offline'
+		),
+		'callback':(
+			'statusActionTrigger', 'messageActionTrigger', 'reportActionTrigger'
+		)
+	}
+	
+	@classmethod
+	def getRandom( cls, dataType ):
+		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
+	
+	@classmethod
+	def contactListAction( cls ):
+		for contact in cls.randomData['contact']:
+			DBSchedule.set( 'statusActionTrigger', None, contact, cls.getRandom( 'status' ) )
+	
+	@classmethod
+	def projectListAction( cls ):
+		DBSchedule.set( 'projectListActionTrigger', None, cls.randomData['project'] )
+	
+	@classmethod
+	def projectDataAction( cls, project ):
+		DBSchedule.set( 'projectDataActionTrigger', None, '{"name":"test","lead":"Someone","members":["one","two","three"]}' )
+	
+	@classmethod
+	def statusActionTrigger( cls ):
+		contact = cls.getRandom( 'contact' )
+		status = cls.getRandom( 'status' )
+		return ( [ contact, status ], {} )
+	
+	@classmethod
+	def messageActionTrigger( cls ):
+		contact = cls.getRandom( 'contact' )
+		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-     '
+		message = ''.join( [letters[randint( 0, len( letters ) - 1 )] for i in range( 0, randint( 1, 100 ) )] )
+		return ( [ contact, message ], {} )
+	
+	@classmethod
+	def reportActionTrigger( cls ):
+		return ( [], {} )
+	
+	def __init__( self ):
+		QtCore.QThread.__init__( self )
+		self.build()
+	
+	def build( self ):
+		self.start()
+	
+	def run( self ):
+		while True:
+			# if random returns a "trigger" value we run a random action
+			if randint( 0, 2 ) == 1:
+				callback = self.getRandom( 'callback' )
+				arg, kwarg  = getattr( self, callback )()
+				DBSchedule.set( callback, None, *arg, **kwarg )
+			time.sleep( 0.5 )
+"""
+
+
+
+"""
 class DBJob:
 	__path = 'job.db'
 	__handle = None
@@ -499,74 +585,7 @@ class DBSchedule:
 			'kwarg':kwarg
 		}
 		cls.sync()
-
-
-
-class RandomActionThread( QtCore.QThread ):
-	randomData = {
-		'project':(
-			'IZI', 'ELIAS'
-		),
-		'contact':(
-			'Ivan', 'Nick', 'Jack', 'Petr', 'Sam', 'Eugen', 'Alex', 'Bob', 'Viktor', 'Mo', 'Fred', 'Woo', 'Bradley', 'Dmitry', 'Jim', 'Lu', Conf.getConf( 'bot' ), 
-		),
-		'status':(
-			'online', 'away', 'busy', 'unavailable', 'offline'
-		),
-		'callback':(
-			'statusActionTrigger', 'messageActionTrigger', 'reportActionTrigger'
-		)
-	}
-	
-	@classmethod
-	def getRandom( cls, dataType ):
-		return cls.randomData[dataType][randint( 0, len( cls.randomData[dataType] ) - 1 )]
-	
-	@classmethod
-	def contactListAction( cls ):
-		for contact in cls.randomData['contact']:
-			DBSchedule.set( 'statusActionTrigger', None, contact, cls.getRandom( 'status' ) )
-	
-	@classmethod
-	def projectListAction( cls ):
-		DBSchedule.set( 'projectListActionTrigger', None, cls.randomData['project'] )
-	
-	@classmethod
-	def projectDataAction( cls, project ):
-		DBSchedule.set( 'projectDataActionTrigger', None, '{"name":"test","lead":"Someone","members":["one","two","three"]}' )
-	
-	@classmethod
-	def statusActionTrigger( cls ):
-		contact = cls.getRandom( 'contact' )
-		status = cls.getRandom( 'status' )
-		return ( [ contact, status ], {} )
-	
-	@classmethod
-	def messageActionTrigger( cls ):
-		contact = cls.getRandom( 'contact' )
-		letters = 'abcdefghijklmnopqrstuvwxyz.,!?-     '
-		message = ''.join( [letters[randint( 0, len( letters ) - 1 )] for i in range( 0, randint( 1, 100 ) )] )
-		return ( [ contact, message ], {} )
-	
-	@classmethod
-	def reportActionTrigger( cls ):
-		return ( [], {} )
-	
-	def __init__( self ):
-		QtCore.QThread.__init__( self )
-		self.build()
-	
-	def build( self ):
-		self.start()
-	
-	def run( self ):
-		while True:
-			# if random returns a "trigger" value we run a random action
-			if randint( 0, 2 ) == 1:
-				callback = self.getRandom( 'callback' )
-				arg, kwarg  = getattr( self, callback )()
-				DBSchedule.set( callback, None, *arg, **kwarg )
-			time.sleep( 0.5 )
+"""
 
 
 
@@ -612,14 +631,14 @@ class QContact( QtGui.QRadioButton ):
 		if not ts:
 			ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':Conf.getConf( 'username' ), 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':DBConf.get( 'username' ), 'message':message }
 		self.messagesNew[ts] = message
 		self.update()
 	
 	def sendTo( self, message ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':Conf.getConf( 'username' ), 'recipient':self.name, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':self.name, 'message':message }
 
 
 
@@ -635,7 +654,7 @@ class QChatDialog( QtGui.QTextEdit ):
 	def message( self, ts, sender, message ):
 		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
 				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
-				( sender==Conf.getConf( 'username' ) and '#000' or '#66f' ),
+				( sender==DBConf.get( 'username' ) and '#000' or '#66f' ),
 				sender,
 				message.replace( '\n', '<br />' )
 			)
@@ -707,14 +726,14 @@ class QProject( QtGui.QRadioButton ):
 		if not ts:
 			ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':Conf.getConf( 'username' ), 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':DBConf.get( 'username' ), 'message':message }
 		self.messagesNew[ts] = message
 		self.update()
 	
 	def sendTo( self, message ):
 		ts = str( time.time() )
 		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':Conf.getConf( 'username' ), 'recipient':self.name, 'message':message }
+		self.messagesList[ts] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':self.name, 'message':message }
 
 
 class QProjectData( QtGui.QTextEdit ):
@@ -729,7 +748,7 @@ class QProjectData( QtGui.QTextEdit ):
 	def message( self, ts, sender, message ):
 		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
 				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
-				( sender==Conf.getConf( 'username' ) and '#000' or '#66f' ),
+				( sender==DBConf.get( 'username' ) and '#000' or '#66f' ),
 				sender,
 				message
 			)

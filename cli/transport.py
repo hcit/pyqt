@@ -2,7 +2,7 @@
 # -*-coding: utf-8 -*-
 
 import xmpp, time
-from conf import Conf
+from db import DBConf
 
 class Transport:
 	_client = None
@@ -21,14 +21,14 @@ class Transport:
 	@classmethod
 	def _connect( cls ):
 		"""Set up a connection to xmpp server. Authenticate"""
-		cls._client = xmpp.Client( Conf.getConf( 'server' ) )
-		cls._client.connect( server=( Conf.getConf( 'server' ), Conf.getConf( 'port' ) ) )
-		cls._client.auth( Conf.getConf( 'username' ), Conf.getConf( 'passwd' ), Conf.getConf( 'nickname' ) )
+		cls._client = xmpp.Client( DBConf.get( 'server' ) )
+		cls._client.connect( server=( DBConf.get( 'server' ), DBConf.get( 'port' ) ) )
+		cls._client.auth( DBConf.get( 'username' ), DBConf.get( 'passwd' ), DBConf.get( 'nickname' ) )
 		cls._client.RegisterHandler( 'message', cls.getMessage )
 		cls._client.sendInitPresence(requestRoster=1)
 		cls._set_process()
 		cls._get_roster()
-		cls.sendMessage( Conf.getConf( 'username' ), 'online' )
+		cls.sendMessage( DBConf.get( 'username' ), 'online' )
 		cls._client.RegisterHandler( 'presence', cls.getPresence )
 	
 	@classmethod
@@ -39,7 +39,7 @@ class Transport:
 	
 	@classmethod
 	def sendMessage( cls, to, messageText, messageType='chat' ):
-		message = xmpp.Message( to + '@' + Conf.getConf( 'server' ), messageText )
+		message = xmpp.Message( to + '@' + DBConf.get( 'server' ), messageText )
 		message.setAttr( 'type', messageType )
 		cls._get_client().send( message )
 	
