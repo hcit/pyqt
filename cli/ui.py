@@ -51,20 +51,25 @@ class Action:
 		self.exitAction.setStatusTip( 'Exit application' )
 		self.exitAction.triggered.connect( QtGui.qApp.quit )
 		
-		self.logoutAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'L&og out', self.master )
+		self.logoutAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'Log &out', self.master )
 		self.logoutAction.setShortcut( 'Ctrl+O' )
 		self.logoutAction.setStatusTip( 'Log out' )
 		self.logoutAction.triggered.connect( self.logoutActionCallback )
 		
-		self.preferencesAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Preferences', self.master )
-		self.preferencesAction.setShortcut( 'Ctrl+P' )
+		self.preferencesAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'Pre&ferences', self.master )
+		self.preferencesAction.setShortcut( 'Ctrl+F' )
 		self.preferencesAction.setStatusTip( 'Preferences' )
 		self.preferencesAction.triggered.connect( self.preferencesActionCallback )
 		
-		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'P&rojects', self.master )
-		self.projectsAction.setShortcut( 'Ctrl+R' )
+		self.projectsAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), '&Projects', self.master )
+		self.projectsAction.setShortcut( 'Ctrl+P' )
 		self.projectsAction.setStatusTip( 'Show projects' )
 		self.projectsAction.triggered.connect( self.projectsActionCallback )
+		
+		self.reportAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'Send &Report', self.master )
+		self.reportAction.setShortcut( 'Ctrl+R' )
+		self.reportAction.setStatusTip( 'Report' )
+		self.reportAction.triggered.connect( self.reportActionCallback )
 		
 		self.chatAction = QtGui.QAction( QtGui.QIcon( 'exit.png' ), 'C&hat', self.master )
 		self.chatAction.setShortcut( 'Ctrl+H' )
@@ -87,6 +92,9 @@ class Action:
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
 		DBJob.set( 'projectListActionTrigger' )
+	
+	def reportActionCallback( self ):
+		self.master.View.report().show()
 	
 	def chatActionCallback( self ):
 		self.master.View.chat().show()
@@ -136,6 +144,13 @@ class Action:
 		project = self.master.View.projectList().value()
 		self.master.View.projectData().show( project, projectData )
 	
+	def reportSubmitCallback( self ):
+		print 'REPORT', self.master.View.report().fields
+		self.master.View.report().hide()
+	
+	def reportCancelCallback( self ):
+		self.master.View.report().hide()
+	
 	def statusActionTrigger( self, contact, status ):
 		self.master.View.contactItem( contact, status )
 	
@@ -170,6 +185,8 @@ class Control:
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
 		self.viewMenuControl.addAction( self.master.Action.projectsAction )
 		self.viewMenuControl.addAction( self.master.Action.preferencesAction )
+		self.actionMenuControl = self.menuControl.addMenu( '&Actions' )
+		self.actionMenuControl.addAction( self.master.Action.reportAction )
 		#self.viewMenuControl.addAction( self.master.Action.chatAction )
 
 
@@ -361,6 +378,59 @@ class View:
 		if not key in self.master.preferences.fields.keys():
 			self.master.preferences.fields[key] = QtGui.QLineEdit( str( value ), parent )
 		return self.master.preferences.fields[key]
+	
+	#################### VIEW report ####################
+	def report( self ):
+		if not hasattr( self.master, 'report' ):
+			self.master.report = QtGui.QWidget()
+			self.master.report.fields = {}
+			self.master.report.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
+			self.master.report.resize( 200, 200 )
+			self.master.report.move( 350, 350 )
+		
+			grid = QtGui.QGridLayout()
+			
+			self.master.report.status = QtGui.QLabel( 'Report' )
+			grid.addWidget( self.master.report.status, 0, 0, 2, 2 )
+			
+			#grid.addWidget( QtGui.QLabel( 'H' ), 2, 0 )
+			grid.addWidget( self.reportField( self.master.report, 'h', 'hours' ), 2, 0 )
+			
+			#grid.addWidget( QtGui.QLabel( 'M' ), 2, 2 )
+			grid.addWidget( self.reportField( self.master.report, 'm', 'minutes' ), 2, 1 )
+			
+			grid.addWidget( QtGui.QLabel( 'ON' ), 3, 0 )
+			grid.addWidget( self.reportProjectList( self.master.report, 'project' ), 3, 1 )
+			
+			grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
+			grid.addWidget( self.reportSummary( self.master.report, 'summary' ), 5, 0, 1, 2 )
+			
+			self.master.report.submit = QtGui.QPushButton( 'Send', self.master.report )
+			self.master.connect( self.master.report.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.reportSubmitCallback )
+			grid.addWidget( self.master.report.submit, 6, 0 )
+			
+			self.master.report.cancel = QtGui.QPushButton( 'Cancel', self.master.report )
+			self.master.connect( self.master.report.cancel, QtCore.SIGNAL( 'clicked()' ), self.master.Action.reportCancelCallback )
+			grid.addWidget( self.master.report.cancel, 6, 1 )
+			
+			self.master.report.setLayout( grid )
+		return self.master.report
+	
+	def reportField( self, parent, key, value='' ):
+		if not key in self.master.report.fields.keys():
+			self.master.report.fields[key] = QtGui.QLineEdit( str( value ), parent )
+		return self.master.report.fields[key]
+	
+	def reportSummary( self, parent, key ):
+		if not key in self.master.report.fields.keys():
+			self.master.report.fields[key] = QtGui.QTextEdit( parent )
+		return self.master.report.fields[key]
+	
+	def reportProjectList( self, parent, key ):
+		print self.projectList().projectListItems
+		if not key in self.master.report.fields.keys():
+			self.master.report.fields[key] = QtGui.QLineEdit( parent )
+		return self.master.report.fields[key]
 	
 	"""
 	def projectFilter( self, parent=None ):
