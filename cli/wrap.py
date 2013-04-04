@@ -84,8 +84,9 @@ class Wrap:
 			cls.messageCallbackHandler( sender, message )
 			cls.messageCallbackHandler = None
 			return
-		cls.history( sender, DBConf.get( 'username' ), message )
-		DBSchedule.set( 'messageActionTrigger', None, sender, message )
+		if message:
+			cls.history( sender, DBConf.get( 'username' ), message )
+			DBSchedule.set( 'messageActionTrigger', None, sender, message )
 	
 	@classmethod
 	def presenceCallbackHook( cls, contact, status ):
