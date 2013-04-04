@@ -61,10 +61,10 @@ class Wrap:
 	@classmethod
 	def report( cls, **kwarg ):
 		Transport.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
-			_str( kwarg.get( 'h', 0 ),
-			_str( kwarg.get( 'm', 0 ),
-			_str( kwarg.get( 'project', '' ),
-			_str( kwarg.get( 'summary', '' ),
+			_str( kwarg.get( 'h', 0 ) ),
+			_str( kwarg.get( 'm', 0 ) ),
+			_str( kwarg.get( 'project', '' ) ),
+			_str( kwarg.get( 'summary', '' ) ),
 		) )
 	
 	@classmethod

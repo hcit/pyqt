@@ -116,4 +116,3 @@ class Transport:
 				cls._get_client().Process( arg )
 			except ValueError as e:
 				cls.connectionError( e )
-				
