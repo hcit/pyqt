@@ -19,6 +19,14 @@ class DBBase:
 			delattr( cls, '__handle' )
 	
 	@classmethod
+	def keys( cls ):
+		try:
+			return cls.handle().keys()
+		except Exception as e:
+			print '::DB EXCEPTION', e
+			return []
+	
+	@classmethod
 	def list( cls ):
 		return cls.handle().items()
 	
@@ -44,7 +52,7 @@ class DBJob( DBBase ):
 	@classmethod
 	def get( cls ):
 		taskList = []
-		keys = cls.handle().keys()
+		keys = cls.keys()
 		keys.sort()
 		for ts in keys:
 			task = cls.handle()[ts]
@@ -72,7 +80,7 @@ class DBCron( DBBase ):
 	@classmethod
 	def get( cls ):
 		taskList = []
-		keys = cls.handle().keys()
+		keys = cls.keys()
 		keys.sort()
 		for ts in keys:
 			task = cls.handle()[ts]
@@ -101,7 +109,7 @@ class DBSchedule( DBBase ):
 	@classmethod
 	def get( cls ):
 		taskList = []
-		keys = cls.handle().keys()
+		keys = cls.keys()
 		keys.sort()
 		for ts in keys:
 			task = cls.handle()[ts]

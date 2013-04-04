@@ -17,7 +17,7 @@ class Transport:
 			try:
 				return getattr( cls, action )( *arg, **kwarg )
 			except Exception as e:
-				print '::TRANSPORT', e
+				print '::TRANSPORT EXCEPTION', e
 	
 	@classmethod
 	def messageCallback( cls, sender, text ):
