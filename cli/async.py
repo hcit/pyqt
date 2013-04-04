@@ -54,6 +54,9 @@ class ExecutionThread( QtCore.QThread ):
 	def helloActionTrigger( self ):
 		Wrap.hello()
 	
+	def reportActionTrigger( self, **kwarg ):
+		Wrap.report( **kwarg )
+	
 	def sendMessageActionTrigger( self, recipient, message ):
 		Wrap.send( recipient, message )
 	

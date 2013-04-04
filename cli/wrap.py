@@ -59,6 +59,15 @@ class Wrap:
 		Transport.sendMessage( DBConf.get( 'bot' ), 'online' )
 	
 	@classmethod
+	def report( cls, **kwarg ):
+		Transport.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
+			_str( kwarg.get( 'h', 0 ),
+			_str( kwarg.get( 'm', 0 ),
+			_str( kwarg.get( 'project', '' ),
+			_str( kwarg.get( 'summary', '' ),
+		) )
+	
+	@classmethod
 	def help( cls ):
 		Transport.sendMessage( DBConf.get( 'bot' ), 'help' )
 	

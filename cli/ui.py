@@ -146,13 +146,13 @@ class Action:
 		self.master.View.projectData().show( project, projectData )
 	
 	def reportProjectListActionTrigger( self, projects ):
-		print '::PROJECTS', projects
-		return
+		self.master.View.reportProjectList().clear()
 		for project, title in projects:
-			self.master.View.reportProjectItem( project, title )
+			self.master.View.reportProjectItem( project )
 	
 	def reportSubmitCallback( self ):
-		print 'REPORT', self.master.View.report().fields
+		data = dict( [( k, QHelper.getValue( v ) ) for k, v in self.master.View.report().fields.items()] )
+		DBJob.set( 'reportActionTrigger', **data )
 		self.master.View.report().hide()
 	
 	def reportCancelCallback( self ):
@@ -400,13 +400,11 @@ class View:
 			self.master.report.status = QtGui.QLabel( 'Report' )
 			grid.addWidget( self.master.report.status, 0, 0, 2, 2 )
 			
-			#grid.addWidget( QtGui.QLabel( 'H' ), 2, 0 )
 			grid.addWidget( self.reportField( self.master.report, 'h', 'hours' ), 2, 0 )
 			
-			#grid.addWidget( QtGui.QLabel( 'M' ), 2, 2 )
 			grid.addWidget( self.reportField( self.master.report, 'm', 'minutes' ), 2, 1 )
 			
-			grid.addWidget( QtGui.QLabel( 'ON' ), 3, 0 )
+			grid.addWidget( QtGui.QLabel( 'Project' ), 3, 0 )
 			grid.addWidget( self.reportProjectList( self.master.report ), 3, 1 )
 			
 			grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
@@ -423,9 +421,10 @@ class View:
 			self.master.report.setLayout( grid )
 		return self.master.report
 	
-	def reportField( self, parent, key, value='' ):
+	def reportField( self, parent, key, placeholder='', value='' ):
 		if not key in self.master.report.fields.keys():
 			self.master.report.fields[key] = QtGui.QLineEdit( str( value ), parent )
+			self.master.report.fields[key].setPlaceholderText( placeholder )
 		return self.master.report.fields[key]
 	
 	def reportSummary( self, parent, key ):
@@ -433,17 +432,15 @@ class View:
 			self.master.report.fields[key] = QtGui.QTextEdit( parent )
 		return self.master.report.fields[key]
 	
-	def reportProjectList( self, parent ):
-		#print self.projectList().projectListItems
-		if not hasattr( self, '_reportProjectList' )
+	def reportProjectList( self, parent=None ):
+		if not hasattr( self, '_reportProjectList' ):
 			self._reportProjectList = QtGui.QComboBox( parent )
-			setattr( self._reportProjectList, 'onActivated', lambda text: setattr( self._reportProjectList, 'text', text ) )
-			setattr( self._reportProjectList, 'text', '' )
-			#self._reportProjectList.activated[str].connect( self.onActivated ) 
+			self.master.report.fields['project'] = self._reportProjectList
 		return self._reportProjectList
 	
 	def reportProjectItem( self, value ):
-		self.
+		if hasattr( self, '_reportProjectList' ):
+			self._reportProjectList.addItem( value )
 	
 	"""
 	def projectFilter( self, parent=None ):
@@ -924,6 +921,18 @@ class QProjectData( QtGui.QTextEdit ):
 				data
 			)
 		self.write( text )
+
+
+
+class QHelper:
+	@classmethod
+	def getValue( cls, widget ):
+		if isinstance( widget, QtGui.QLineEdit ) or issubclass( widget.__class__, QtGui.QLineEdit ):
+			return widget.text()
+		elif isinstance( widget, QtGui.QComboBox ) or issubclass( widget.__class__, QtGui.QComboBox ):
+			return widget.currentText()
+		elif isinstance( widget, QtGui.QTextEdit ) or issubclass( widget.__class__, QtGui.QTextEdit ):
+			return widget.toPlainText()
 
 
 
