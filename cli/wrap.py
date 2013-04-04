@@ -48,7 +48,8 @@ class Wrap:
 	@classmethod
 	def connect( cls ):
 		Transport.listener = cls
-		res = Transport._connect()
+		res = Transport.execute( '_connect' )
+		#res = Transport._connect()
 		if res:
 			DBSchedule.set( 'successActionTrigger', None )
 		else:
@@ -56,25 +57,36 @@ class Wrap:
 	
 	@classmethod
 	def hello( cls ):
-		Transport.sendMessage( DBConf.get( 'bot' ), 'online' )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'online' )
+		#Transport.sendMessage( DBConf.get( 'bot' ), 'online' )
 	
 	@classmethod
 	def report( cls, **kwarg ):
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
+			_str( kwarg.get( 'h', 0 ) ),
+			_str( kwarg.get( 'm', 0 ) ),
+			_str( kwarg.get( 'project', '' ) ),
+			_str( kwarg.get( 'summary', '' ) ),
+		) )
+		"""
 		Transport.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
 			_str( kwarg.get( 'h', 0 ) ),
 			_str( kwarg.get( 'm', 0 ) ),
 			_str( kwarg.get( 'project', '' ) ),
 			_str( kwarg.get( 'summary', '' ) ),
 		) )
+		"""
 	
 	@classmethod
 	def help( cls ):
-		Transport.sendMessage( DBConf.get( 'bot' ), 'help' )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'help' )
+		#Transport.sendMessage( DBConf.get( 'bot' ), 'help' )
 	
 	@classmethod
 	def send( cls, to, message ):
 		cls.history( DBConf.get( 'username' ), to, message )
-		Transport.sendMessage( _str( to ), _str( message ) )
+		Transport.execute( 'sendMessage', _str( to ), _str( message ) )
+		#Transport.sendMessage( _str( to ), _str( message ) )
 	
 	@classmethod
 	def messageCallbackHook( cls, sender, message ):
@@ -105,14 +117,15 @@ class Wrap:
 	
 	@classmethod
 	def refreshContactList( cls ):
-		contactList = Transport.getContactList().items()
-		#print '::CONTACTLIST', contactList
+		contactList = Transport.execute( 'getContactList' ).items()
+		#contactList = Transport.getContactList().items()
 		for contact in contactList:
 			DBSchedule.set( 'statusActionTrigger', None, contact, 'online' )
 	
 	@classmethod
 	def refreshProjectList( cls ):
-		Transport.sendMessage( DBConf.get( 'bot' ), 'project list' )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'project list' )
+		#Transport.sendMessage( DBConf.get( 'bot' ), 'project list' )
 		cls.messageCallbackHandler = cls._refreshProjectList
 	
 	@classmethod
@@ -149,5 +162,6 @@ class Wrap:
 	
 	@classmethod
 	def pickProjectHook( cls, project ):
-		Transport.sendMessage( DBConf.get( 'bot' ), 'project define '+project )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'project define '+project )
+		#Transport.sendMessage( DBConf.get( 'bot' ), 'project define '+project )
 		cls.messageCallbackHandler = cls._displayProjectInfo

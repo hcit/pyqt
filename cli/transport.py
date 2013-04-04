@@ -12,6 +12,14 @@ class Transport:
 	listener = None
 	
 	@classmethod
+	def execute( cls, action, *arg, **kwarg ):
+		if hasattr( cls, action ) and callable( getattr( cls, action ) ):
+			try:
+				return getattr( cls, action )( *arg, **kwarg )
+			except Exception as e:
+				print '::TRANSPORT', e
+	
+	@classmethod
 	def messageCallback( cls, sender, text ):
 		return True
 	
