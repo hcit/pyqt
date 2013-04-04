@@ -20,6 +20,7 @@ def _str( string ):
 	return string
 
 class Wrap:
+	trigger = {}
 	_dbs = {}
 	messageCallbackHandler = None
 	
@@ -95,7 +96,7 @@ class Wrap:
 	@classmethod
 	def refreshContactList( cls ):
 		contactList = Transport.getContactList().items()
-		print '::CONTACTLIST', contactList
+		#print '::CONTACTLIST', contactList
 		for contact in contactList:
 			DBSchedule.set( 'statusActionTrigger', None, contact, 'online' )
 	
@@ -107,7 +108,9 @@ class Wrap:
 	@classmethod
 	def _refreshProjectList( cls, sender, message ):
 		projectList = [line.split( ': ', 1) for line in message.split('\n') if len(line.split( ': ', 1))==2]
-		DBSchedule.set( 'projectListActionTrigger', None, projectList )
+		if cls.trigger.get( 'refreshProjectList', None):
+			DBSchedule.set( cls.trigger['refreshProjectList'], None, projectList )
+			del cls.trigger['refreshProjectList']
 	
 	@classmethod
 	def _displayProjectInfo( cls, sender, message ):
@@ -124,8 +127,10 @@ class Wrap:
 		cls.refreshContactList()
 	
 	@classmethod
-	def showProjectsHook( cls ):
+	def showProjectsHook( cls, **kwarg ):
 		cls.refreshProjectList()
+		if 'trigger' in kwarg.keys():
+			cls.trigger['refreshProjectList'] = kwarg['trigger']
 	
 	@classmethod
 	def pickContactHook( cls, contact ):

@@ -91,10 +91,11 @@ class Action:
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
-		DBJob.set( 'projectListActionTrigger' )
+		DBJob.set( 'projectListActionTrigger', trigger='projectListActionTrigger' )
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
+		DBJob.set( 'projectListActionTrigger', trigger='reportProjectListActionTrigger' )
 	
 	def chatActionCallback( self ):
 		self.master.View.chat().show()
@@ -143,6 +144,12 @@ class Action:
 	def projectDataActionTrigger( self, projectData ):
 		project = self.master.View.projectList().value()
 		self.master.View.projectData().show( project, projectData )
+	
+	def reportProjectListActionTrigger( self, projects ):
+		print '::PROJECTS', projects
+		return
+		for project, title in projects:
+			self.master.View.reportProjectItem( project, title )
 	
 	def reportSubmitCallback( self ):
 		print 'REPORT', self.master.View.report().fields
@@ -400,7 +407,7 @@ class View:
 			grid.addWidget( self.reportField( self.master.report, 'm', 'minutes' ), 2, 1 )
 			
 			grid.addWidget( QtGui.QLabel( 'ON' ), 3, 0 )
-			grid.addWidget( self.reportProjectList( self.master.report, 'project' ), 3, 1 )
+			grid.addWidget( self.reportProjectList( self.master.report ), 3, 1 )
 			
 			grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
 			grid.addWidget( self.reportSummary( self.master.report, 'summary' ), 5, 0, 1, 2 )
@@ -426,11 +433,17 @@ class View:
 			self.master.report.fields[key] = QtGui.QTextEdit( parent )
 		return self.master.report.fields[key]
 	
-	def reportProjectList( self, parent, key ):
-		print self.projectList().projectListItems
-		if not key in self.master.report.fields.keys():
-			self.master.report.fields[key] = QtGui.QLineEdit( parent )
-		return self.master.report.fields[key]
+	def reportProjectList( self, parent ):
+		#print self.projectList().projectListItems
+		if not hasattr( self, '_reportProjectList' )
+			self._reportProjectList = QtGui.QComboBox( parent )
+			setattr( self._reportProjectList, 'onActivated', lambda text: setattr( self._reportProjectList, 'text', text ) )
+			setattr( self._reportProjectList, 'text', '' )
+			#self._reportProjectList.activated[str].connect( self.onActivated ) 
+		return self._reportProjectList
+	
+	def reportProjectItem( self, value ):
+		self.
 	
 	"""
 	def projectFilter( self, parent=None ):

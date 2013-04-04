@@ -57,19 +57,13 @@ class ExecutionThread( QtCore.QThread ):
 	def sendMessageActionTrigger( self, recipient, message ):
 		Wrap.send( recipient, message )
 	
-	def projectListActionTrigger( self ):
-		#TODO: replace with wrapper.projectList
-		#RandomActionThread.projectListAction()
-		Wrap.showProjectsHook()
+	def projectListActionTrigger( self, **kwarg ):
+		Wrap.showProjectsHook( **kwarg )
 	
 	def projectDataActionTrigger( self, project ):
-		#TODO: replace with wrapper.projectData
-		#RandomActionThread.projectDataAction( project )
 		Wrap.pickProjectHook( project )
 	
 	def contactsActionTrigger( self ):
-		#TODO: replace with wrapper.contactList
-		#RandomActionThread.contactListAction()
 		Wrap.showContactsHook()
 	
 	def respond( self ):
