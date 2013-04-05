@@ -153,13 +153,15 @@ class Action:
 	def preferencesCancelCallback( self ):
 		self.master.View.preferences().hide()
 	
+	"""
 	def reportProjectListActionTrigger( self, projects ):
 		self.master.View.reportProjectList().clear()
 		for project, title in projects:
 			self.master.View.reportProjectItem( project )
+	"""
 	
 	def reportSubmitCallback( self ):
-		data = dict( [( k, QHelper.getValue( v ) ) for k, v in self.master.View.report().fields.items()] )
+		data = self.master.View.report().values()
 		DBJob.set( 'reportActionTrigger', **data )
 		self.master.View.report().hide()
 	
@@ -285,6 +287,11 @@ class View:
 	#################### VIEW projects ####################
 	def projects( self ):
 		if not hasattr( self.master, 'projects' ):
+			self.projects = QProjectView()
+		return self.projects
+	"""
+	def projects( self ):
+		if not hasattr( self.master, 'projects' ):
 			self.master.projects = QtGui.QWidget()
 			self.master.projects.setWindowTitle( 'Projects' + ' - ' + DBConf.get( 'appname' ) )
 			self.master.projects.resize( 550, 450 )
@@ -313,7 +320,9 @@ class View:
 		if not hasattr( self, '_projectList' ):
 			self._projectList = QProjectList( self.master.projects )
 		return self._projectList
+	"""
 	
+	"""
 	def projectItem( self, project, status=None ):
 		if not project in self._projectList.radioList.keys():
 			self._projectList.radioList[project] = QProject( project, self._projectList )
@@ -322,6 +331,7 @@ class View:
 		self._projectList.radioList[project].status = status or self._projectList.radioList[project].status
 		self._projectList.radioList[project].update()
 		return self._projectList.radioList[project]
+	"""
 	
 	#################### VIEW chat ####################
 	def chat( self ):
@@ -509,6 +519,9 @@ class QForm( QtGui.QWidget ):
 		if not fieldName in self.fields.keys():
 			self.fields[fieldName] =  QtGui.QComboBox( self )
 		return self.fields[fieldName]
+	
+	def values( self ):
+		return dict( [( k, QHelper.getValue( v ) ) for k, v in self.fields.items()] )
 
 
 
@@ -691,6 +704,28 @@ class QChatInput( QtGui.QTextEdit ):
 
 
 
+class QProjectView( QtGui.QWidget ):
+	def __init__( self, parent=None ):
+		if parent:
+			super( self.__class__, self ).__init__( parent )
+		else:
+			super( self.__class__, self ).__init__()
+		self.setWindowTitle( 'Projects' + ' - ' + DBConf.get( 'appname' ) )
+		self.resize( 550, 450 )
+		self.move( 350, 350 )
+		
+		grid = QtGui.QGridLayout()
+		
+		grid.addWidget( QProjectData( self ), 0, 0, 2, 1 )
+		grid.addWidget( QtGui.QLineEdit( self ), 0, 1 )
+		grid.addWidget( QProjectList( self ), 1, 1 )
+		
+		grid.setColumnMinimumWidth( 0, 300 )
+		
+		self.setLayout( grid )
+
+
+
 class QProjectList( QtGui.QGroupBox ):
 	def __init__( self, parent ):
 		super( self.__class__, self ).__init__( parent )
@@ -817,12 +852,11 @@ class QReportView( QForm ):
 		self.status = QtGui.QLabel( 'Report' )
 		grid.addWidget( self.status, 0, 0, 2, 2 )
 		
-		grid.addWidget( self.lineEditField( 'h', 'hours' ), 2, 0 )
+		grid.addWidget( QtGui.QLabel( 'Project' ), 2, 0 )
+		grid.addWidget( self.comboBoxField( 'project' ), 2, 1 )
 		
-		grid.addWidget( self.lineEditField( 'm', 'minutes' ), 2, 1 )
-		
-		grid.addWidget( QtGui.QLabel( 'Project' ), 3, 0 )
-		grid.addWidget( self.comboBoxField( 'project' ), 3, 1 )
+		grid.addWidget( self.lineEditField( 'h', '', 'hours' ), 3, 0 )
+		grid.addWidget( self.lineEditField( 'm', '', 'minutes' ), 3, 1 )
 		
 		grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
 		grid.addWidget( self.textEditField( 'summary' ), 5, 0, 1, 2 )
