@@ -14,8 +14,8 @@ class UI( QtGui.QMainWindow ):
 	
 	def __init__( self ):
 		super( self.__class__, self ).__init__()
-		self.build()
 		self.__class__.instance = self
+		self.build()
 	
 	def build( self ):
 		self.setGeometry( 50, 100, 300, 600 )
@@ -87,7 +87,7 @@ class Action:
 	def logoutActionCallback( self ):
 		DBConf.set( 'username', '' )
 		DBConf.set( 'passwd', '' )
-		self.master.central().hide()
+		self.master.contact().hide()
 		self.master.login().show()
 	
 	def loginActionCallback( self ):
@@ -141,7 +141,7 @@ class Action:
 		DBJob.set( 'projectDataActionTrigger', None, project )
 	
 	def loginSubmitCallback( self ):
-		for k, v in self.master.View.login().fields.items():
+		for k, v in self.master.View.login().values().items():
 			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
 			DBJob.set( 'connectActionTrigger' )
 	
@@ -176,7 +176,7 @@ class Action:
 	def SIGNALCBloginSuccessCallback( self ):
 		print '::CONNECT:master:loginSuccess'
 		self.master.View.login().hide()
-		self.master.View.central().show()
+		self.master.View.contact().show()
 		self.master.View.chat().hide()
 		DBJob.set( 'helloActionTrigger' )
 	
@@ -210,24 +210,37 @@ class View:
 	def build( self ):
 		self.login().show()
 	
-	#################### VIEW central ####################
-	def central( self ):
-		if not hasattr( self.master, 'central' ):
-			self.master.central = QtGui.QWidget()
-			self.master.central.resize( 250, 150 )
-			self.master.central.move( 450, 450 )
+	#################### VIEW contact ####################
+	def contact( self ):
+		if not hasattr( self.master, 'contact' ):
+			self.master.contact = QContactView()
+			self.master.setCentralWidget( self.master.contact )
+		return self.master.contact
+	
+	"""
+	def contact( self ):
+		if not hasattr( self.master, 'contact' ):
+			self.master.contact = QtGui.QWidget()
+			self.master.contact.resize( 250, 150 )
+			self.master.contact.move( 450, 450 )
 		
 			grid = QtGui.QGridLayout()
-			grid.addWidget( self.contactFilter( self.master.central ), 0, 0 )
-			grid.addWidget( self.contactList( self.master.central ), 1, 0 )
-			self.master.central.setLayout( grid )
-			self.master.setCentralWidget( self.master.central )
-		return self.master.central
+			grid.addWidget( self.contactFilter( self.master.contact ), 0, 0 )
+			grid.addWidget( self.contactList( self.master.contact ), 1, 0 )
+			self.master.contact.setLayout( grid )
+			self.master.setCentralWidget( self.master.contact )
+		return self.master.contact
 	
 	def contactList( self, parent=None ):
 		if not hasattr( self, '_contactList' ):
-			self._contactList = QContactList( self.master.central )
+			self._contactList = QContactList( self.master.contact )
 		return self._contactList
+	
+	def contactFilter( self, parent=None ):
+		if not hasattr( self, '_contactFilter' ):
+			self._contactFilter = QtGui.QLineEdit( parent )
+		return self._contactFilter
+	"""
 	
 	"""
 	def contactItem( self, contact, status=None ):
@@ -239,12 +252,13 @@ class View:
 		return self._contactList.radioList[contact]
 	"""
 	
-	def contactFilter( self, parent=None ):
-		if not hasattr( self, '_contactFilter' ):
-			self._contactFilter = QtGui.QLineEdit( parent )
-		return self._contactFilter
-	
 	#################### VIEW login ####################
+	def login( self ):
+		if not hasattr( self.master, 'login' ):
+			self.master.login = QLoginView()
+		return self.master.login
+	
+	"""
 	def login( self ):
 		if not hasattr( self.master, 'login' ):
 			self.master.login = QtGui.QWidget()
@@ -283,6 +297,7 @@ class View:
 		if not key in self.master.login.fields.keys():
 			self.master.login.fields[key] = QtGui.QLineEdit( str( value ), parent )
 		return self.master.login.fields[key]
+	"""
 	
 	#################### VIEW projects ####################
 	def projects( self ):
@@ -336,6 +351,11 @@ class View:
 	#################### VIEW chat ####################
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
+			self.master.chat = QChatView()
+		return self.main.chat
+	"""
+	def chat( self ):
+		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QtGui.QWidget()
 			self.master.chat.resize( 600, 450 )
 			self.master.chat.move( 350, 350 )
@@ -357,8 +377,15 @@ class View:
 			self._chatInput = QChatInput( '', parent )
 			self._chatInput.setMaximumHeight( 50 )
 		return self._chatInput
+	"""
 	
 	#################### VIEW preferences ####################
+	def preferences( self ):
+		if not hasattr( self.master, 'preferences' ):
+			self.master.preferences = QPreferencesView()
+		return self.master.preferences
+	
+	"""
 	def preferences( self ):
 		if not hasattr( self.master, 'preferences' ):
 			self.master.preferences = QtGui.QWidget()
@@ -389,8 +416,13 @@ class View:
 		if not key in self.master.preferences.fields.keys():
 			self.master.preferences.fields[key] = QtGui.QLineEdit( str( value ), parent )
 		return self.master.preferences.fields[key]
+	"""
 	
 	#################### VIEW report ####################
+	def report( self ):
+		if not hasattr( self.master, 'report' ):
+			self.master.report = QReportView()
+		return self.master.report
 	"""
 	def report( self ):
 		if not hasattr( self.master, 'report' ):
@@ -447,10 +479,6 @@ class View:
 		if hasattr( self, '_reportProjectList' ):
 			self._reportProjectList.addItem( value )
 	"""
-	def report( self ):
-		if not hasattr( self.master, 'report' ):
-			self.master.report = QReportView()
-		return self.master.report
 	
 	"""
 	def reportField( self, parent, key, placeholder='', value='' ):
@@ -524,6 +552,21 @@ class QForm( QtGui.QWidget ):
 		return dict( [( k, QHelper.getValue( v ) ) for k, v in self.fields.items()] )
 
 
+
+#################### CONTACT VIEW ####################
+class QContactView( QtGui.QWidget ):
+	def __init__( self, parent=None ):
+		if parent:
+			super( self.__class__, self ).__init__( parent )
+		else:
+			super( self.__class__, self ).__init__()
+		self.resize( 250, 150 )
+		self.move( 450, 450 )
+		
+		grid = QtGui.QGridLayout()
+		grid.addWidget( QContactFilter( self ), 0, 0 )
+		grid.addWidget( QContactList( self ), 1, 0 )
+		self.setLayout( grid )
 
 class QContactList( QtGui.QGroupBox ):
 	def __init__( self, parent ):
@@ -611,6 +654,30 @@ class QContact( QtGui.QRadioButton ):
 
 
 
+#################### CHAT VIEW ####################
+class QChatView( QtGui.QWidget ):
+	def __init__( self, parent=None ):
+		if parent:
+			super( self.__class__, self ).__init__( parent )
+		else:
+			super( self.__class__, self ).__init__()
+		self.resize( 600, 450 )
+		self.move( 350, 350 )
+		
+		grid = QtGui.QGridLayout()
+		
+		chatDialog = QChatDialog( self )
+		chatDialog.setMaximumHeight( 50 )
+		grid.addWidget( chatDialog, 0, 0 )
+		
+		chatInput = QChatInput( self )
+		chatInput.setMaximumHeight( 50 )
+		grid.addWidget( chatInput, 1, 0 )
+		
+		self.setLayout( grid )
+
+
+
 class QChatDialog( QtGui.QTextEdit ):
 	def __init__( self, parent ):
 		super( self.__class__, self ).__init__( parent )
@@ -670,8 +737,8 @@ class QChatDialog( QtGui.QTextEdit ):
 
 
 class QChatInput( QtGui.QTextEdit ):
-	def __init__( self, text, parent ):
-		super( self.__class__, self ).__init__( text, parent )
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( '', parent )
 		self.parent = parent
 		self.contact = None
 		self.__sendMessageOnReturn = True
@@ -704,6 +771,7 @@ class QChatInput( QtGui.QTextEdit ):
 
 
 
+#################### PROJECT VIEW ####################
 class QProjectView( QtGui.QWidget ):
 	def __init__( self, parent=None ):
 		if parent:
@@ -839,9 +907,72 @@ class QProjectData( QtGui.QTextEdit ):
 
 
 
+#################### LOGIN VIEW ####################
+class QLoginView( QForm ):
+	def __init__( self ):
+		QForm.__init__( self )
+		self.setWindowTitle( 'Login' + ' - ' + DBConf.get( 'appname' ) )
+		self.resize( 450, 200 )
+		self.move( 350, 350 )
+		
+		grid = QtGui.QGridLayout()
+		
+		self.status = QtGui.QLabel( 'Please enter your login and password' )
+		grid.addWidget( self.status, 0, 0, 2, 2 )
+		
+		grid.addWidget( QtGui.QLabel( 'username' ), 2, 0 )
+		grid.addWidget( self.lineEditField( 'username', DBConf.get( 'username' ) ), 2, 1 )
+		
+		grid.addWidget( QtGui.QLabel( 'password' ), 3, 0 )
+		grid.addWidget( self.lineEditField( 'passwd', DBConf.get( 'passwd' ) ), 3, 1 )
+		
+		self.submit = QtGui.QPushButton( 'Login', self )
+		QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.loginSubmitCallback )
+		grid.addWidget( self.submit, 4, 0 )
+		
+		self.quit = QtGui.QPushButton( 'Cancel', self )
+		QHelper.master().connect( self.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
+		grid.addWidget( self.quit, 4, 1 )
+		
+		self.preferences = QtGui.QPushButton( 'Preferences', self )
+		QHelper.master().connect( self.preferences, QtCore.SIGNAL( 'clicked()' ), lambda:self.hide() or QHelper.master().Action.preferencesActionCallback() )
+		grid.addWidget( self.preferences, 5, 0, 2 ,1 )
+		
+		self.setLayout( grid )
+
+
+
+#################### PREFERENCES VIEW ####################
+class QPreferencesView( QForm ):
+	def __init__( self ):
+		QForm.__init__( self )
+		self.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
+		self.setWindowTitle( 'Preferences' + ' - ' + DBConf.get( 'appname' ) )
+		self.resize( 450, 550 )
+		self.move( 350, 350 )
+		
+		grid = QtGui.QGridLayout()
+		n = 0
+		for key, value in DBConf.list():
+			grid.addWidget( QtGui.QLabel( key ), n, 0 )
+			grid.addWidget( self.lineEditField( self, key, value ), n, 1 )
+			n += 1
+		
+		self.submit = QtGui.QPushButton( 'Save', self )
+		QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesSubmitCallback )
+		grid.addWidget( self.submit, n, 0 )
+			
+		self.cancel = QtGui.QPushButton( 'Cancel', self )
+		QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesCancelCallback )
+		grid.addWidget( self.master.preferences.cancel, n, 1 )
+			
+		self.setLayout( grid )
+
+
+
+#################### REPORT VIEW ####################
 class QReportView( QForm ):
 	def __init__( self ):
-		#super( self.__class__, self ).__init__()
 		QForm.__init__( self )
 		self.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
 		self.resize( 200, 200 )
