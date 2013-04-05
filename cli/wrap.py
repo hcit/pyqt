@@ -51,9 +51,9 @@ class Wrap:
 		res = Transport.execute( '_connect' )
 		#res = Transport._connect()
 		if res:
-			DBSchedule.set( 'successActionTrigger', None )
+			DBSchedule.set( 'loginSuccess', None )
 		else:
-			DBSchedule.set( 'errorActionTrigger', None, 'Bad login' )
+			DBSchedule.set( 'loginError', None, 'Bad login' )
 	
 	@classmethod
 	def hello( cls ):
@@ -98,11 +98,11 @@ class Wrap:
 			return
 		if message:
 			cls.history( sender, DBConf.get( 'username' ), message )
-			DBSchedule.set( 'messageActionTrigger', None, sender, message )
+			DBSchedule.set( 'receiveMessage', None, sender, message )
 	
 	@classmethod
 	def presenceCallbackHook( cls, contact, status ):
-		DBSchedule.set( 'statusActionTrigger', None, contact, status )
+		DBSchedule.set( 'contactStatus', None, contact, status )
 		#TODO??????????????? cls.refreshContactList()
 	
 	@classmethod
@@ -139,7 +139,7 @@ class Wrap:
 	def _displayProjectInfo( cls, sender, message ):
 		projectInfo = message
 		message = unidecode( message ).split( ':', 1 )[1].strip()
-		DBSchedule.set( 'projectDataActionTrigger', None, message )
+		DBSchedule.set( 'projectData', None, message )
 	
 	@classmethod
 	def sendMessageHook( cls, recipient, message ):

@@ -27,7 +27,12 @@ class ListenerThread( QtCore.QThread ):
 	
 	def respond( self ):
 		for ts, task in DBSchedule.get():
-			getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
+			if hasattr( self.master.Action, task['callback'] ):
+				print '::ASYNC:Action', task['callback']
+				getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
+			else:
+				print '::ASYNC:emit', task['callback']
+				self.master.emit( QtCore.SIGNAL( task['callback'] ), *task['arg'] )#, **task['kwarg'] )
 
 
 
