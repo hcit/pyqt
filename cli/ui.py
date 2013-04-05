@@ -98,7 +98,7 @@ class Action:
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
-		DBJob.set( 'projectListActionTrigger', trigger='reportProjectListActionTrigger' )
+		DBJob.set( 'projectListActionTrigger' )
 	
 	def SIGNALCBcontactStatusCallback( self, contact, status ):
 		print '::CONNECT:master:contactStatus', contact, status
@@ -381,6 +381,7 @@ class View:
 		return self.master.preferences.fields[key]
 	
 	#################### VIEW report ####################
+	"""
 	def report( self ):
 		if not hasattr( self.master, 'report' ):
 			self.master.report = QtGui.QWidget()
@@ -435,6 +436,79 @@ class View:
 	def reportProjectItem( self, value ):
 		if hasattr( self, '_reportProjectList' ):
 			self._reportProjectList.addItem( value )
+	"""
+	def report( self ):
+		if not hasattr( self.master, 'report' ):
+			self.master.report = QReportView()
+		return self.master.report
+	
+	"""
+	def reportField( self, parent, key, placeholder='', value='' ):
+		if not key in self.master.report.fields.keys():
+			self.master.report.fields[key] = QtGui.QLineEdit( str( value ), parent )
+			self.master.report.fields[key].setPlaceholderText( placeholder )
+		return self.master.report.fields[key]
+	
+	def reportSummary( self, parent, key ):
+		if not key in self.master.report.fields.keys():
+			self.master.report.fields[key] = QtGui.QTextEdit( parent )
+		return self.master.report.fields[key]
+	
+	def reportProjectList( self, parent=None ):
+		if not hasattr( self, '_reportProjectList' ):
+			self._reportProjectList = QtGui.QComboBox( parent )
+			self.master.report.fields['project'] = self._reportProjectList
+		return self._reportProjectList
+	
+	def reportProjectItem( self, value ):
+		if hasattr( self, '_reportProjectList' ):
+			self._reportProjectList.addItem( value )
+	"""
+
+
+
+class QHelper:
+	@classmethod
+	def getValue( cls, widget ):
+		if isinstance( widget, QtGui.QLineEdit ) or issubclass( widget.__class__, QtGui.QLineEdit ):
+			return widget.text()
+		elif isinstance( widget, QtGui.QComboBox ) or issubclass( widget.__class__, QtGui.QComboBox ):
+			return widget.currentText()
+		elif isinstance( widget, QtGui.QTextEdit ) or issubclass( widget.__class__, QtGui.QTextEdit ):
+			return widget.toPlainText()
+	
+	@classmethod
+	def master( cls, widget=None ):
+		return UI.instance
+
+
+
+class QForm( QtGui.QWidget ):
+	def __init__( self, parent=None ):
+		if parent:
+			QtGui.QWidget.__init__( self, parent )
+		else:
+			QtGui.QWidget.__init__( self )
+		if parent:
+			self.parent = parent
+		self.fields = {}
+	
+	def lineEditField( self, fieldName, value='', placeholder='' ):
+		if not fieldName in self.fields.keys():
+			self.fields[fieldName] = QtGui.QLineEdit( value, self )
+			if placeholder:
+				self.fields[fieldName].setPlaceholderText( placeholder )
+		return self.fields[fieldName]
+	
+	def textEditField( self, fieldName ):
+		if not fieldName in self.fields.keys():
+			self.fields[fieldName] =  QtGui.QTextEdit( self )
+		return self.fields[fieldName]
+	
+	def comboBoxField( self, fieldName ):
+		if not fieldName in self.fields.keys():
+			self.fields[fieldName] =  QtGui.QComboBox( self )
+		return self.fields[fieldName]
 
 
 
@@ -730,19 +804,46 @@ class QProjectData( QtGui.QTextEdit ):
 
 
 
-class QHelper:
-	@classmethod
-	def getValue( cls, widget ):
-		if isinstance( widget, QtGui.QLineEdit ) or issubclass( widget.__class__, QtGui.QLineEdit ):
-			return widget.text()
-		elif isinstance( widget, QtGui.QComboBox ) or issubclass( widget.__class__, QtGui.QComboBox ):
-			return widget.currentText()
-		elif isinstance( widget, QtGui.QTextEdit ) or issubclass( widget.__class__, QtGui.QTextEdit ):
-			return widget.toPlainText()
+class QReportView( QForm ):
+	def __init__( self ):
+		#super( self.__class__, self ).__init__()
+		QForm.__init__( self )
+		self.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
+		self.resize( 200, 200 )
+		self.move( 350, 350 )
+		
+		grid = QtGui.QGridLayout()
+		
+		self.status = QtGui.QLabel( 'Report' )
+		grid.addWidget( self.status, 0, 0, 2, 2 )
+		
+		grid.addWidget( self.lineEditField( 'h', 'hours' ), 2, 0 )
+		
+		grid.addWidget( self.lineEditField( 'm', 'minutes' ), 2, 1 )
+		
+		grid.addWidget( QtGui.QLabel( 'Project' ), 3, 0 )
+		grid.addWidget( self.comboBoxField( 'project' ), 3, 1 )
+		
+		grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
+		grid.addWidget( self.textEditField( 'summary' ), 5, 0, 1, 2 )
+		
+		self.submit = QtGui.QPushButton( 'Send', self )
+		# TODO: make this an emit action
+		QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportSubmitCallback )
+		grid.addWidget( self.submit, 6, 0 )
+		
+		self.cancel = QtGui.QPushButton( 'Cancel', self )
+		# TODO: make this an emit action
+		QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportCancelCallback )
+		grid.addWidget( self.cancel, 6, 1 )
+		
+		self.setLayout( grid )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectList' ), self.projectListCallback )
 	
-	@classmethod
-	def master( cls, widget=None ):
-		return UI.instance
+	def projectListCallback( self, projectList ):
+		print  '::CONNECT:QReportView:projectList', projectList
+		for project, title in projectList:
+			self.fields['project'].addItem( project )
 
 
 

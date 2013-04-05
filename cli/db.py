@@ -8,7 +8,12 @@ class DBBase:
 	@classmethod
 	def handle( cls ):
 		if not hasattr( cls, '__handle' ):
-			cls.__handle = shelve.open( cls.path )
+			for i in range( 10 ):
+				try:
+					cls.__handle = shelve.open( cls.path )
+					break
+				except Exception as e:
+					print '::DB EXCEPTION', e
 		return cls.__handle
 	
 	@classmethod
@@ -20,11 +25,11 @@ class DBBase:
 	
 	@classmethod
 	def keys( cls ):
-		try:
-			return cls.handle().keys()
-		except Exception as e:
-			print '::DB EXCEPTION', e
-			return []
+		for i in range( 10 ):
+			try:
+				return cls.handle().keys()
+			except Exception as e:
+				print '::DB EXCEPTION', e
 	
 	@classmethod
 	def list( cls ):
