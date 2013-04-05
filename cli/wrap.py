@@ -20,7 +20,6 @@ def _str( string ):
 	return string
 
 class Wrap:
-	trigger = {}
 	_dbs = {}
 	messageCallbackHandler = None
 	
@@ -131,9 +130,7 @@ class Wrap:
 	@classmethod
 	def _refreshProjectList( cls, sender, message ):
 		projectList = [line.split( ': ', 1) for line in message.split('\n') if len(line.split( ': ', 1))==2]
-		if cls.trigger.get( 'refreshProjectList', None):
-			DBSchedule.set( cls.trigger['refreshProjectList'], None, projectList )
-			del cls.trigger['refreshProjectList']
+		DBSchedule.set( 'projectList', None, projectList )
 	
 	@classmethod
 	def _displayProjectInfo( cls, sender, message ):
@@ -152,8 +149,6 @@ class Wrap:
 	@classmethod
 	def showProjectsHook( cls, **kwarg ):
 		cls.refreshProjectList()
-		if 'trigger' in kwarg.keys():
-			cls.trigger['refreshProjectList'] = kwarg['trigger']
 	
 	@classmethod
 	def pickContactHook( cls, contact ):

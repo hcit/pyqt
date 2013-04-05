@@ -65,8 +65,8 @@ class ExecutionThread( QtCore.QThread ):
 	def sendMessageActionTrigger( self, recipient, message ):
 		Wrap.send( recipient, message )
 	
-	def projectListActionTrigger( self, **kwarg ):
-		Wrap.showProjectsHook( **kwarg )
+	def projectListActionTrigger( self ):
+		Wrap.showProjectsHook()
 	
 	def projectDataActionTrigger( self, project ):
 		Wrap.pickProjectHook( project )

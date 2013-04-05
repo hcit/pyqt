@@ -80,6 +80,8 @@ class Action:
 		self.master.connect( self.master, QtCore.SIGNAL( 'pickedContact' ), self.SIGNALCBpickedContactCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'contactStatus' ), self.SIGNALCBcontactStatusCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'receiveMessage' ), self.SIGNALCBreceiveMessageCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'projectList' ), self.SIGNALCBprojectListCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'pickedProject' ), self.SIGNALCBpickedProjectCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'projectData' ), self.SIGNALCBprojectDataCallback )
 	
 	def logoutActionCallback( self ):
@@ -94,13 +96,13 @@ class Action:
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
 	
-	def projectsActionCallback( self ):
-		self.master.View.projects().show()
-		DBJob.set( 'projectListActionTrigger', trigger='projectListActionTrigger' )
-	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
 		DBJob.set( 'projectListActionTrigger', trigger='reportProjectListActionTrigger' )
+	
+	def SIGNALCBcontactStatusCallback( self, contact, status ):
+		print '::CONNECT:master:contactStatus', contact, status
+		#self.master.View.contactItem( contact, status )
 	
 	def SIGNALCBpickedContactCallback( self, contact ):
 		print '::CONNECT:master:pickedContact', contact
@@ -108,14 +110,35 @@ class Action:
 		#for message in self.master.View.contactItem( contact ).messages():
 		#	self.master.View.chatDialog().message( message['ts'], message['sender'], message['message'] )
 	
-	def pickProjectActionCallback( self ):
-		project = self.master.View.projectList().value()
-		self.master.projects.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
-		DBJob.set( 'projectDataActionTrigger', None, project )
-	
 	def SIGNALCBsendMessageCallback( self, contact, message ):
 		print '::CONNECT:master:sendMessage', contact, message
 		DBJob.set( 'sendMessageActionTrigger', None, contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+	
+	def SIGNALCBreceiveMessageCallback( self, contact, message ):
+		print '::CONNECT:master:receiveMessage', contact, message
+		#self.master.View.contactItem( contact ).receiveFrom( message, str( time.time() ) )
+		#if self.master.View.contactList().value() == contact:
+		#	self.master.View.chatDialog().message( time.time(), contact, message )
+	
+	def projectsActionCallback( self ):
+		self.master.View.projects().show()
+		DBJob.set( 'projectListActionTrigger' )
+	
+	def SIGNALCBprojectListCallback( self, projectList ):
+		print '::CONNECT:master:projectList', projectList
+		#for project, title in projectList:
+		#	self.master.View.projectItem( project, title )
+	
+	def SIGNALCBprojectDataCallback( self, projectData ):
+		print '::CONNECT:master:projectData', projectData
+		#project = self.master.View.projectList().value()
+		#self.master.View.projectData().show( project, projectData )
+	
+	def SIGNALCBpickedProjectCallback( self, project ):
+		print '::CONNECT:master:pickedProject', project
+		#project = self.master.View.projectList().value()
+		#self.master.projects.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
+		DBJob.set( 'projectDataActionTrigger', None, project )
 	
 	def loginSubmitCallback( self ):
 		for k, v in self.master.View.login().fields.items():
@@ -130,15 +153,6 @@ class Action:
 	def preferencesCancelCallback( self ):
 		self.master.View.preferences().hide()
 	
-	def projectListActionTrigger( self, projects ):
-		for project, title in projects:
-			self.master.View.projectItem( project, title )
-	
-	def SIGNALCBprojectDataCallback( self, projectData ):
-		print '::CONNECT:master:projectData', projectData
-		#project = self.master.View.projectList().value()
-		#self.master.View.projectData().show( project, projectData )
-	
 	def reportProjectListActionTrigger( self, projects ):
 		self.master.View.reportProjectList().clear()
 		for project, title in projects:
@@ -151,16 +165,6 @@ class Action:
 	
 	def reportCancelCallback( self ):
 		self.master.View.report().hide()
-	
-	def SIGNALCBcontactStatusCallback( self, contact, status ):
-		print '::CONNECT:master:contactStatus', contact, status
-		#self.master.View.contactItem( contact, status )
-	
-	def SIGNALCBreceiveMessageCallback( self, contact, message ):
-		print '::CONNECT:master:receiveMessage', contact, message
-		#self.master.View.contactItem( contact ).receiveFrom( message, str( time.time() ) )
-		#if self.master.View.contactList().value() == contact:
-		#	self.master.View.chatDialog().message( time.time(), contact, message )
 	
 	def SIGNALCBloginErrorCallback( self, e ):
 		print '::CONNECT:master:loginError', e
@@ -223,6 +227,7 @@ class View:
 			self._contactList = QContactList( self.master.central )
 		return self._contactList
 	
+	"""
 	def contactItem( self, contact, status=None ):
 		if not contact in self._contactList.radioList.keys():
 			self._contactList.radioList[contact] = QContact( contact, self._contactList )
@@ -230,6 +235,7 @@ class View:
 		self._contactList.radioList[contact].status = status or self._contactList.radioList[contact].status
 		self._contactList.radioList[contact].update()
 		return self._contactList.radioList[contact]
+	"""
 	
 	def contactFilter( self, parent=None ):
 		if not hasattr( self, '_contactFilter' ):
@@ -450,7 +456,7 @@ class QContactList( QtGui.QGroupBox ):
 			self.radioList[contact] = QContact( contact, status, self )
 			self.layout.addWidget( self.radioList[contact] )
 	
-	def pickedContactCallback( self, contact, status ):
+	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContactList:pickedContact', contact
 		self.contact = contact
 	
@@ -618,14 +624,25 @@ class QProjectList( QtGui.QGroupBox ):
 		self.projectListItems = {}
 		self.layout = QtGui.QVBoxLayout()
 		self.setLayout( self.layout )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectList' ), self.projectListCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedProject' ), self.pickedProjectCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectData' ), self.projectDataCallback )
-		
-	self.master.View.projectData().show( project, projectData )
-	def pickedProjectCallback( self, contact ):
-		print '::CONNECT:QChatInput:pickedProject', contact
+	
+	def projectListCallback( self, projectList ):
+		print '::CONNECT:QProjectList:projectList', projectList
+		for project, title in projectList:
+			if not project in self.radioList.keys():
+				self.radioList[project] = QProject( project, title, self )
+				self.layout.addWidget( self.radioList[project] )
+	
+	def pickedProjectCallback( self, project ):
+		print '::CONNECT:QProjectList:pickedProject', project
 		self.project = project
-		self.clear()
+		#self.parent.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
+		#self.clear()
+	
+	def projectDataCallback( self, projectData ):
+		print '::CONNECT:QProjectList:projectData', projectData
 	
 	def value( self ):
 		for k, w in self.radioList.items():
@@ -635,43 +652,35 @@ class QProjectList( QtGui.QGroupBox ):
 
 
 class QProject( QtGui.QRadioButton ):
-	def __init__( self, name, parent ):
-		super( self.__class__, self ).__init__( '' )
-		self.name = name
+	def __init__( self, name, title, parent ):
+		super( self.__class__, self ).__init__( name + '['+title+']' )
 		self.parent = parent
-		self.messagesNew = {}
-		self.messagesTime = []
-		self.messagesList = {}
-		self.status = '?'
+		self.name = name
+		self.title = title
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectList' ), self.projectListCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedProject' ), self.pickedProjectCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectData' ), self.projectDataCallback )
 		self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedProject' ), self.name ) )
 	
+	def projectListCallback( self, projectList ):
+		print '::CONNECT:QProject:projectList', projectList
+		#for project, title in projectList:
+		#	self.master.View.projectItem( project, title )
+	
+	def pickedProjectCallback( self, project ):
+		print '::CONNECT:QProject:pickedProject', project
+	
+	def projectDataCallback( self, projectData ):
+		print '::CONNECT:QProject:projectData', projectData
+	
 	def update( self ):
 		if self.isChecked():
 			self.messagesNew = {}
-		self.setText( '%s [%s] %s' % (
+		self.setText( '%s [%s]' % (
 			self.name,
-			self.status,
-			len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or ''
+			self.title
 		) )
-	
-	def messages( self, since=None ):
-		self.messagesTime.sort()
-		return [{ 'ts':ts, 'sender':self.messagesList[ts]['sender'], 'message':self.messagesList[ts]['message'] } for ts in self.messagesTime]
-	
-	def receiveFrom( self, message, ts=None ):
-		if not ts:
-			ts = str( time.time() )
-		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':DBConf.get( 'username' ), 'message':message }
-		self.messagesNew[ts] = message
-		self.update()
-	
-	def sendTo( self, message ):
-		ts = str( time.time() )
-		self.messagesTime.append( ts )
-		self.messagesList[ts] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':self.name, 'message':message }
+
 
 
 class QProjectData( QtGui.QTextEdit ):
@@ -679,28 +688,18 @@ class QProjectData( QtGui.QTextEdit ):
 		super( self.__class__, self ).__init__( parent )
 		self.textCursor = QtGui.QTextCursor( self.document() )
 		self.setReadOnly( 1 )
+		self.project = None
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedProject' ), self.pickedProjectCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectData' ), self.projectDataCallback )
 	
-	def write( self, text ):
-		self.textCursor.insertHtml( text + '<br />' )
+	def pickedProjectCallback( self, project ):
+		print '::CONNECT:QProjectData:pickedProject', project
+		self.project = project
+		self.clear()
+		self.write( '...loading' )
 	
-	def message( self, ts, sender, message ):
-		text =  '<span style="color:#999;">[%s]</span> <span style="font-weight:bold; color:%s;">%s</span><br />%s<br />' % (
-				datetime.datetime.fromtimestamp( int( str( ts ).split('.')[0] ) ).strftime( '%Y-%m-%d %H:%M:%S' ),
-				( sender==DBConf.get( 'username' ) and '#000' or '#66f' ),
-				sender,
-				message
-			)
-		self.write( text )
-	
-	def plain( self, data ):
-		if type( data ) == list:
-			return '<ul style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<li>' + self.plain( i ) + '</li>' for i in data] ) + '</ul>'
-		elif type( data ) == dict:
-			return '<dl style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<dt style="font-weight:bold;">' + self.plain( k ) + '</dt>' + '<dd>' + self.plain( v ) + '</dd>' for k, v in data.items()] ) + '</dl>'
-		else:
-			return str( data )
-	
-	def show( self, project, projectData ):
+	def projectDataCallback( self, projectData ):
+		print '::CONNECT:QProjectData:projectData', projectData
 		import json
 		self.clear()
 		data = '<table width="100%" cellspacing="4" cellpadding="0">'
@@ -713,10 +712,21 @@ class QProjectData( QtGui.QTextEdit ):
 			data += '</tr>'
 		data += '</table>'
 		text =  '<span style="font-weight:bold; color:#66f;">[%s]</span><br />%s<br />' % (
-				project,
+				self.project,
 				data
 			)
 		self.write( text )
+	
+	def write( self, text ):
+		self.textCursor.insertHtml( text + '<br />' )
+	
+	def plain( self, data ):
+		if type( data ) == list:
+			return '<ul style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<li>' + self.plain( i ) + '</li>' for i in data] ) + '</ul>'
+		elif type( data ) == dict:
+			return '<dl style="margin:0; padding:0 0 0 15px;">' + ''.join( ['<dt style="font-weight:bold;">' + self.plain( k ) + '</dt>' + '<dd>' + self.plain( v ) + '</dd>' for k, v in data.items()] ) + '</dl>'
+		else:
+			return str( data )
 
 
 
