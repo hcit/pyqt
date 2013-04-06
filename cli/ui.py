@@ -172,11 +172,11 @@ class Action:
 	def SIGNALCBloginErrorCallback( self, e ):
 		print '::CONNECT:master:loginError', e
 		#self.master.Action.loginActionCallback()
-		self.master.View.login().status.setText( str( e ) )
+		#self.master.View.login().status.setText( str( e ) )
 	
 	def SIGNALCBloginSuccessCallback( self ):
 		print '::CONNECT:master:loginSuccess'
-		self.master.View.login().hide()
+		#self.master.View.login().hide()
 		self.master.show()
 		self.master.View.contact().show()
 		self.master.View.chat().hide()
@@ -936,6 +936,18 @@ class QLoginView( QForm ):
 		grid.addWidget( self.preferences, 5, 0, 2 ,1 )
 		
 		self.setLayout( grid )
+	
+	def loginSuccessCallback( self ):
+		self.status.setStylesheet( '{color:blue}' )
+		self.status.setText( 'Login OK' )
+		time.sleep( 1 )
+		self.hide()
+		self.status.setStylesheet( '{color:black}' )
+		self.status.setText( 'Please enter your login and password' )
+	
+	def loginErrorCallback( self, e ):
+		self.status.setText( str( e ) )
+		self.status.setStylesheet( '{color:red}' )
 
 
 
