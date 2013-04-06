@@ -20,7 +20,8 @@ class UI( QtGui.QMainWindow ):
 	
 	def build( self ):
 		self.setGeometry( 50, 100, 300, 600 )
-		self.setWindowTitle( 'Contacts' )    
+		self.setWindowTitle( 'Contacts' )
+		self.setWindowIcon( QtGui.QIcon( 'web.png' ) )
 		self.statusBar()
 		
 		self.Action = Action( self )
@@ -568,7 +569,6 @@ class QContactFilter( QtGui.QLineEdit ):
 class QContactList( QtGui.QGroupBox ):
 	def __init__( self, parent ):
 		super( self.__class__, self ).__init__( parent )
-		self.setStyleSheet( 'QWidget{ background : white; }' )
 		self.radioList = {}
 		self.contactListItems = {}
 		self.layout = QtGui.QVBoxLayout()
@@ -600,24 +600,69 @@ class QContactList( QtGui.QGroupBox ):
 
 
 
-class QContact( QtGui.QRadioButton ):
+class QContact( QtGui.QFrame ):
 	def __init__( self, name, status, parent ):
-		super( self.__class__, self ).__init__( '' )
+		#super( self.__class__, self ).__init__( '' )
+		QtGui.QWidget.__init__( self, parent )
+		self.setObjectName( 'QContact' )
 		self.name = name
 		self.parent = parent
 		self.messagesNew = {}
 		self.status = status
+		self.selected = False
+		self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
+		self.buttons = QtGui.QWidget( self )
+		
+		self.nameLabel = QtGui.QLabel( self.name )
+		self.statusLabel = QtGui.QLabel( self.status )
+		self.statusLabel.setStyleSheet( 'QLabel { color:#999; }' )
+		self.messagesLabel = QtGui.QLabel( '' )
+		self.messagesLabel.setStyleSheet( 'QLabel { color:#000; font-weight:bold; }' )
+		self.buttons.pushButton1 = QtGui.QPushButton( '1' )
+		self.buttons.pushButton2 = QtGui.QPushButton( '2' )
+		
+		layout = QtGui.QHBoxLayout( self.buttons )
+		layout.addStretch( 1 )
+		layout.addWidget( self.buttons.pushButton1 )
+		layout.addWidget( self.buttons.pushButton2 )
+		
+		grid = QtGui.QGridLayout( self )
+		grid.addWidget( self.nameLabel, 0, 0 )
+		grid.addWidget( self.messagesLabel, 0, 1 )
+		grid.addWidget( self.statusLabel, 2, 0, 1, 2 )
+		grid.addWidget( self.buttons, 3, 1 )
+		self.buttons.hide()
+		
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'sendMessage' ), self.sendMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'receiveMessage' ), self.receiveMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'clickedContact' ), self.clickedContactCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
-		self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
+		#self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
 		self.update()
+	
+	def mousePressEvent( self, event ):
+		QHelper.master().emit( QtCore.SIGNAL( 'clickedContact' ), self.name )
+	
+	def mouseDoubleClickEvent( self, event ):
+		QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name )
+	
+	def clickedContactCallback( self, contact ):
+		print '::CONNECT:QContact:clickedContact', contact
+		if self.name == contact:
+			self.setStyleSheet( 'QWidget#QContact { background:#fff; color:#333; }' )
+			self.buttons.show()
+		else:
+			self.buttons.hide()
+			self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
 	
 	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContact:pickedContact', contact
 		if self.name == contact:
+			self.selected = True
 			self.update()
+		else:
+			pass
 	
 	def sendMessageCallback( self, contact, message ):
 		print '::CONNECT:QContact:sendMessage', contact, message
@@ -636,13 +681,16 @@ class QContact( QtGui.QRadioButton ):
 			self.update()
 	
 	def update( self ):
-		if self.isChecked():
+		if self.selected:
 			self.messagesNew = {}
-		self.setText( '%s [%s] %s' % (
-			self.name,
-			self.status,
-			len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or ''
-		) )
+		self.statusLabel.setText( self.status )
+		if self.status == 'online':
+			self.statusLabel.setStyleSheet( 'QLabel { color:green; }' )
+		elif self.status == 'offline':
+			self.statusLabel.setStyleSheet( 'QLabel { color:gray; }' )
+		else:
+			self.statusLabel.setStyleSheet( 'QLabel { color:yellow; }' )
+		self.messagesLabel.setText( ( len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or '' ) )
 	
 	def receiveFrom( self, message, ts=None ):
 		#if not ts:

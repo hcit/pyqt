@@ -64,12 +64,6 @@ class Transport:
 		message.setAttr( 'type', messageType )
 		cls._get_client().send( message )
 	
-	"""
-	@classmethod
-	def setMessageCallback( cls, callback ):
-		cls.messageCallback = callback
-	"""
-	
 	@classmethod
 	def getMessage( cls, session, message ):
 		#sender = message.getFrom().getResource()
