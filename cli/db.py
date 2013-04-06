@@ -142,7 +142,7 @@ class DBHistory( DBBase ):
 	path = os.path.join( 'data', 'history', '' )
 	
 	@classmethod
-	def setPath( sender, recipient ):
+	def setPath( cls, sender, recipient ):
 		filename = [ sender, recipient ]
 		filename.sort()
 		filename = '_'.join( filename ) + '.db'
@@ -160,7 +160,7 @@ class DBHistory( DBBase ):
 			'recipient':QHelper.str( recipient ),
 			'message':QHelper.str( message )
 		}
-		cls._dbs[filename].sync()
+		cls.handle().sync()
 	
 	@classmethod
 	def get( cls, user, contact ):

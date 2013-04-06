@@ -76,6 +76,7 @@ class Action:
 		self.reportAction.triggered.connect( self.reportActionCallback )
 		
 		self.master.connect( self.master, QtCore.SIGNAL( 'loginSubmit' ), self.SIGNALCBloginSubmitCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'loginCancel' ), self.SIGNALCBloginCancelCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'loginSuccess' ), self.SIGNALCBloginSuccessCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'loginError' ), self.SIGNALCBloginErrorCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'sendMessage' ), self.SIGNALCBsendMessageCallback )
@@ -85,6 +86,8 @@ class Action:
 		self.master.connect( self.master, QtCore.SIGNAL( 'projectList' ), self.SIGNALCBprojectListCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'pickedProject' ), self.SIGNALCBpickedProjectCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'projectData' ), self.SIGNALCBprojectDataCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'preferencesSubmit' ), self.SIGNALCBpreferencesSubmitCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'preferencesCancel' ), self.SIGNALCBpreferencesCancelCallback )
 	
 	def logoutActionCallback( self ):
 		DBConf.set( 'username', '' )
@@ -95,12 +98,45 @@ class Action:
 	def loginActionCallback( self ):
 		self.master.View.login().show()
 	
+	def SIGNALCBloginSubmitCallback( self, username, passwd ):
+		print '::CONNECT:master:loginSubmit', username, passwd
+	
+	def SIGNALCBloginCancelCallback( self ):
+		print '::CONNECT:master:loginCancel'
+	
+	def SIGNALCBloginErrorCallback( self, e ):
+		print '::CONNECT:master:loginError', e
+	
+	def SIGNALCBloginSuccessCallback( self ):
+		print '::CONNECT:master:loginSuccess'
+		self.master.show()
+		self.master.View.contact().show()
+		self.master.View.chat().hide()
+		DBJob.set( 'helloActionTrigger' )
+	
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
+	
+	def SIGNALCBpreferencesSubmitCallback( self ):
+		print '::CONNECT:master:preferencesSubmit'
+	
+	def SIGNALCBpreferencesCancelCallback( self ):
+		print '::CONNECT:master:preferencesCancel'
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
 		DBJob.set( 'projectListActionTrigger' )
+	
+	def reportSubmitCallback( self ):
+		data = self.master.View.report().values()
+		DBJob.set( 'reportActionTrigger', **data )
+		self.master.View.report().hide()
+	
+	def reportCancelCallback( self ):
+		self.master.View.report().hide()
+	
+	def reportActionTrigger( self ):
+		pass
 	
 	def SIGNALCBcontactStatusCallback( self, contact, status ):
 		print '::CONNECT:master:contactStatus', contact, status
@@ -142,48 +178,12 @@ class Action:
 		#self.master.projects.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
 		DBJob.set( 'projectDataActionTrigger', None, project )
 	
-	def SIGNALCBloginSubmitCallback( self, username, passwd ):
-		print '::CONNECT:master:loginSubmit', username, passwd
-		DBJob.set( 'connectActionTrigger', None, username, passwd )
-	
-	def preferencesSubmitCallback( self ):
-		for k, v in self.master.View.preferences().fields.items():
-			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
-			self.master.View.preferences().hide()
-	
-	def preferencesCancelCallback( self ):
-		self.master.View.preferences().hide()
-	
 	"""
 	def reportProjectListActionTrigger( self, projects ):
 		self.master.View.reportProjectList().clear()
 		for project, title in projects:
 			self.master.View.reportProjectItem( project )
 	"""
-	
-	def reportSubmitCallback( self ):
-		data = self.master.View.report().values()
-		DBJob.set( 'reportActionTrigger', **data )
-		self.master.View.report().hide()
-	
-	def reportCancelCallback( self ):
-		self.master.View.report().hide()
-	
-	def SIGNALCBloginErrorCallback( self, e ):
-		print '::CONNECT:master:loginError', e
-		#self.master.Action.loginActionCallback()
-		#self.master.View.login().status.setText( str( e ) )
-	
-	def SIGNALCBloginSuccessCallback( self ):
-		print '::CONNECT:master:loginSuccess'
-		#self.master.View.login().hide()
-		self.master.show()
-		self.master.View.contact().show()
-		#self.master.View.chat().hide()
-		DBJob.set( 'helloActionTrigger' )
-	
-	def reportActionTrigger( self ):
-		pass
 
 
 
@@ -553,6 +553,7 @@ class QContactView( QtGui.QWidget ):
 		grid = QtGui.QGridLayout()
 		grid.addWidget( QContactFilter( self ), 0, 0 )
 		grid.addWidget( QContactList( self ), 1, 0 )
+		
 		self.setLayout( grid )
 
 
@@ -567,9 +568,12 @@ class QContactFilter( QtGui.QLineEdit ):
 class QContactList( QtGui.QGroupBox ):
 	def __init__( self, parent ):
 		super( self.__class__, self ).__init__( parent )
+		self.setStyleSheet( 'QWidget{ background : white; }' )
 		self.radioList = {}
 		self.contactListItems = {}
 		self.layout = QtGui.QVBoxLayout()
+		self.layout.addStretch( 1 )
+		#self.layout.setAlignment( QtCore.Qt.AlignTop )
 		self.setLayout( self.layout )
 		self.contact = None
 		#self.master.View.contactItem( contact, status )
@@ -581,15 +585,18 @@ class QContactList( QtGui.QGroupBox ):
 		if not contact in self.radioList.keys():
 			self.radioList[contact] = QContact( contact, status, self )
 			self.layout.addWidget( self.radioList[contact] )
+			#self.layout.setAlignment( self.radioList[contact], QtCore.Qt.AlignTop )
 	
 	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContactList:pickedContact', contact
 		self.contact = contact
 	
+	"""
 	def value( self ):
 		for k, w in self.radioList.items():
 			if w.isChecked():
 				return k
+	"""
 
 
 
@@ -603,11 +610,14 @@ class QContact( QtGui.QRadioButton ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'sendMessage' ), self.sendMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'receiveMessage' ), self.receiveMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
 		self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
 		self.update()
 	
 	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContact:pickedContact', contact
+		if self.name == contact:
+			self.update()
 	
 	def sendMessageCallback( self, contact, message ):
 		print '::CONNECT:QContact:sendMessage', contact, message
@@ -623,7 +633,7 @@ class QContact( QtGui.QRadioButton ):
 		print '::CONNECT:QContact:contactStatus', contact, status
 		if self.name == contact:
 			self.status = status
-			self.update
+			self.update()
 	
 	def update( self ):
 		if self.isChecked():
@@ -928,22 +938,21 @@ class QLoginView( QForm ):
 		
 		self.submit = QtGui.QPushButton( 'Login', self )
 		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'loginSubmit' ), QHelper.getValue( self.fields['username'] ), QHelper.getValue( self.fields['passwd'] ) ) )
-		#QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.loginSubmitCallback )
-		#grid.addWidget( self.submit, 4, 0 )
 		
 		self.quit = QtGui.QPushButton( 'Cancel', self )
-		QHelper.master().connect( self.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
-		#grid.addWidget( self.quit, 4, 1 )
+		self.quit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'loginCancel' ) ) )
+		#QHelper.master().connect( self.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
 		
 		self.preferences = QtGui.QPushButton( 'Preferences', self )
+		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'loginSubmit' ), QHelper.getValue( self.fields['username'] ), QHelper.getValue( self.fields['passwd'] ) ) )
 		QHelper.master().connect( self.preferences, QtCore.SIGNAL( 'clicked()' ), lambda:self.hide() or QHelper.master().Action.preferencesActionCallback() )
-		#grid.addWidget( self.preferences, 5, 0, 2 ,1 )
+		#self.preferences.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesDialog' ) ) )
 		
 		hbox = QtGui.QHBoxLayout()
-		hbox.addStretch(1)
-		hbox.addWidget(self.preferences)
-		hbox.addWidget(self.submit)
-		hbox.addWidget(self.quit)
+		hbox.addStretch( 1 )
+		hbox.addWidget( self.preferences )
+		hbox.addWidget( self.submit )
+		hbox.addWidget( self.quit )
 		
 		buttons = QtGui.QWidget()
 		buttons.setLayout( hbox )
@@ -955,27 +964,45 @@ class QLoginView( QForm ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'loginSubmit' ), self.loginSubmitCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'loginSuccess' ), self.loginSuccessCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'loginError' ), self.loginErrorCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'loginCancel' ), self.loginCancelCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesSubmit' ), self.preferencesSubmitCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesCancel' ), self.preferencesCancelCallback )
 	
 	def loginSubmitCallback( self, username, passwd ):
 		print  '::CONNECT:QLoginView:loginSubmit', username, passwd
-		self.status.setStyleSheet( 'QLabel { color : blue; }' )
+		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
+		DBJob.set( 'connectActionTrigger', None, username, passwd )
 	
 	def loginSuccessCallback( self ):
 		print  '::CONNECT:QLoginView:loginSuccess'
 		DBConf.set( 'username', QHelper.getValue( self.fields['username'] ) )
 		DBConf.set( 'passwd', QHelper.getValue( self.fields['passwd'] ) )
-		self.status.setStyleSheet( 'QLabel { color : blue; }' )
-		self.status.setText( 'Login OK' )
-		time.sleep( 1 )
+		#self.status.setStyleSheet( 'QLabel { color : blue; }' )
+		#self.status.setText( 'Login OK' )
+		#time.sleep( 1 )
 		self.hide()
-		#self.status.setStyleSheet( 'QLabel { color : black; }' )
 		self.status.setText( '' )
+		#self.status.setStyleSheet( 'QLabel { color : black; }' )
 	
 	def loginErrorCallback( self, e ):
 		print  '::CONNECT:QLoginView:loginError', e
 		self.status.setText( str( e ) )
 		self.status.setStyleSheet( 'QLabel { color : red; }' )
+	
+	def loginCancelCallback( self ):
+		print  '::CONNECT:QLoginView:loginCancel'
+		QtGui.qApp.quit()
+	
+	def preferencesSubmitCallback( self ):
+		print  '::CONNECT:QLoginView:preferencesSubmit'
+		if not QHelper.master().isVisible() and not self.isVisible():
+			self.show()
+	
+	def preferencesCancelCallback( self ):
+		print  '::CONNECT:QLoginView:preferencesCancel'
+		if not QHelper.master().isVisible() and not self.isVisible():
+			self.show()
 
 
 
@@ -985,25 +1012,48 @@ class QPreferencesView( QForm ):
 		QForm.__init__( self )
 		self.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
 		self.setWindowTitle( 'Preferences' + ' - ' + DBConf.get( 'appname' ) )
-		self.resize( 450, 550 )
+		self.resize( 450, 250 )
 		self.move( 350, 350 )
 		
 		grid = QtGui.QGridLayout()
 		n = 0
 		for key, value in DBConf.list():
 			grid.addWidget( QtGui.QLabel( key ), n, 0 )
-			grid.addWidget( self.lineEditField( self, key, value ), n, 1 )
+			grid.addWidget( self.lineEditField( key, str( value ) ), n, 1 )
 			n += 1
 		
 		self.submit = QtGui.QPushButton( 'Save', self )
-		QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesSubmitCallback )
-		grid.addWidget( self.submit, n, 0 )
+		#QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesSubmitCallback )
+		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesSubmit' ) ) )
 			
 		self.cancel = QtGui.QPushButton( 'Cancel', self )
-		QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesCancelCallback )
-		grid.addWidget( self.cancel, n, 1 )
+		#QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesCancelCallback )
+		self.cancel.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesCancel' ) ) )
+		
+		hbox = QtGui.QHBoxLayout()
+		hbox.addStretch( 1 )
+		hbox.addWidget( self.submit )
+		hbox.addWidget( self.cancel )
+		
+		buttons = QtGui.QWidget()
+		buttons.setLayout( hbox )
+		
+		grid.addWidget( buttons, n, 0, 1 ,2 )
 			
 		self.setLayout( grid )
+		
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesSubmit' ), self.preferencesSubmitCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesCancel' ), self.preferencesCancelCallback )
+	
+	def preferencesSubmitCallback( self ):
+		print  '::CONNECT:QPreferencesView:preferencesSubmit'
+		for k, v in self.fields.items():
+			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
+		self.hide()
+	
+	def preferencesCancelCallback( self ):
+		print  '::CONNECT:QPreferencesView:preferencesCancel'
+		self.hide()
 
 
 

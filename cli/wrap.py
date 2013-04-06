@@ -75,9 +75,8 @@ class Wrap:
 	
 	@classmethod
 	def send( cls, to, message ):
-		cls.history( DBConf.get( 'username' ), to, message )
+		DBHistory.set( DBConf.get( 'username' ), to, message )
 		Transport.execute( 'sendMessage', QHelper.str( to ), QHelper.str( message ) )
-		#Transport.sendMessage( QHelper.str( to ), QHelper.str( message ) )
 	
 	@classmethod
 	def messageCallbackHook( cls, sender, message ):
@@ -88,7 +87,7 @@ class Wrap:
 			cls.messageCallbackHandler = None
 			return
 		if message:
-			cls.history( sender, DBConf.get( 'username' ), message )
+			DBHistory.set( sender, DBConf.get( 'username' ), message )
 			DBSchedule.set( 'receiveMessage', None, sender, message )
 	
 	@classmethod
@@ -145,7 +144,7 @@ class Wrap:
 	@classmethod
 	def pickContactHook( cls, contact ):
 		#TODO load history
-		messages = cls.getHistory( contact )
+		messages = DBHistory.get( DBConf.get( 'username' ), contact )
 	
 	@classmethod
 	def pickProjectHook( cls, project ):
