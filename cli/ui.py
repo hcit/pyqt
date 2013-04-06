@@ -88,6 +88,8 @@ class Action:
 		self.master.connect( self.master, QtCore.SIGNAL( 'projectData' ), self.SIGNALCBprojectDataCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'preferencesSubmit' ), self.SIGNALCBpreferencesSubmitCallback )
 		self.master.connect( self.master, QtCore.SIGNAL( 'preferencesCancel' ), self.SIGNALCBpreferencesCancelCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'reportSubmit' ), self.SIGNALCBreportSubmitCallback )
+		self.master.connect( self.master, QtCore.SIGNAL( 'reportCancel' ), self.SIGNALCBreportCancelCallback )
 	
 	def logoutActionCallback( self ):
 		DBConf.set( 'username', '' )
@@ -127,13 +129,11 @@ class Action:
 		self.master.View.report().show()
 		DBJob.set( 'projectListActionTrigger' )
 	
-	def reportSubmitCallback( self ):
-		data = self.master.View.report().values()
-		DBJob.set( 'reportActionTrigger', **data )
-		self.master.View.report().hide()
+	def SIGNALCBreportSubmitCallback( self ):
+		print '::CONNECT:master:reportSubmit'
 	
-	def reportCancelCallback( self ):
-		self.master.View.report().hide()
+	def SIGNALCBreportCancelCallback( self ):
+		print '::CONNECT:master:reportCancel'
 	
 	def reportActionTrigger( self ):
 		pass
@@ -1047,8 +1047,8 @@ class QPreferencesView( QForm ):
 	
 	def preferencesSubmitCallback( self ):
 		print  '::CONNECT:QPreferencesView:preferencesSubmit'
-		for k, v in self.fields.items():
-			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
+		for k, v in self.values().items():
+			DBConf.set( k, type( DBConf.get( k ) )( v ) )
 		self.hide()
 	
 	def preferencesCancelCallback( self ):
@@ -1080,17 +1080,29 @@ class QReportView( QForm ):
 		grid.addWidget( self.textEditField( 'summary' ), 5, 0, 1, 2 )
 		
 		self.submit = QtGui.QPushButton( 'Send', self )
-		# TODO: make this an emit action
-		QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportSubmitCallback )
+		#QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportSubmitCallback )
+		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'reportSubmit' ) ) )
 		grid.addWidget( self.submit, 6, 0 )
 		
 		self.cancel = QtGui.QPushButton( 'Cancel', self )
-		# TODO: make this an emit action
-		QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportCancelCallback )
+		#QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportCancelCallback )
+		self.cancel.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'reportCancel' ) ) )
 		grid.addWidget( self.cancel, 6, 1 )
 		
 		self.setLayout( grid )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectList' ), self.projectListCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'reportSubmit' ), self.reportSubmitCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'reportCancel' ), self.reportCancelCallback )
+	
+	def preferencesSubmitCallback( self ):
+		print  '::CONNECT:QReportView:reportSubmit'
+		data = self.values()
+		DBJob.set( 'reportActionTrigger', **data )
+		self.hide()
+	
+	def reportCancelCallback( self ):
+		print  '::CONNECT:QReportView:reportCancel'
+		self.hide()
 	
 	def projectListCallback( self, projectList ):
 		print  '::CONNECT:QReportView:projectList', projectList
