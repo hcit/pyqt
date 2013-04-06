@@ -1,9 +1,10 @@
 #!/usr/bin/python
 # -*-coding: utf-8 -*-
-import shelve, time
+import shelve, time, os
+from helper import QHelper
 
 class DBBase:
-	path = ''
+	path = os.path.join( 'data', '' )
 	
 	@classmethod
 	def handle( cls ):
@@ -47,12 +48,12 @@ class DBBase:
 
 
 class DBConf( DBBase ):
-	path = 'conf.db'
+	path = os.path.join( 'data', 'conf.db' )
 
 
 
 class DBJob( DBBase ):
-	path = 'job.db'
+	path = os.path.join( 'data', 'job.db' )
 	
 	@classmethod
 	def get( cls ):
@@ -80,7 +81,7 @@ class DBJob( DBBase ):
 
 
 class DBCron( DBBase ):
-	path = 'cron.db'
+	path = os.path.join( 'data', 'cron.db' )
 	
 	@classmethod
 	def get( cls ):
@@ -109,7 +110,7 @@ class DBCron( DBBase ):
 
 
 class DBSchedule( DBBase ):
-	path = 'schedule.db'
+	path = os.path.join( 'data', 'schedule.db' )
 	
 	@classmethod
 	def get( cls ):
@@ -133,3 +134,37 @@ class DBSchedule( DBBase ):
 			'kwarg':kwarg
 		}
 		cls.sync()
+
+
+
+class DBHistory( DBBase ):
+	basepath = os.path.join( 'data', 'history' )
+	path = os.path.join( 'data', 'history', '' )
+	
+	@classmethod
+	def setPath( sender, recipient ):
+		filename = [ sender, recipient ]
+		filename.sort()
+		filename = '_'.join( filename ) + '.db'
+		cls.sync()
+		cls.path = os.path.join( cls.basepath, filename )
+	
+	@classmethod
+	def set( cls, sender, recipient, message, ts=None ):
+		cls.setPath( sender, recipient )
+		if not ts:
+			ts = time.time()
+		cls.handle()[str( ts )] = {
+			'ts':str( int( ts ) ),
+			'sender':QHelper.str( sender ),
+			'recipient':QHelper.str( recipient ),
+			'message':QHelper.str( message )
+		}
+		cls._dbs[filename].sync()
+	
+	@classmethod
+	def get( cls, user, contact ):
+		cls.setPath( user, contact )
+		keys = cls.keys()
+		keys.sort()
+		return [cls.handle()[key] for key in keys]

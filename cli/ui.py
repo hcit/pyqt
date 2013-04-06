@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- conding: utf-8 -*-
-import sys, time, datetime
+import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
-#from wrap import Wrap
 from async import ListenerThread, ExecutionThread
 from db import DBConf, DBJob, DBCron, DBSchedule
+from helper import QHelper
 
 
 
@@ -15,6 +15,7 @@ class UI( QtGui.QMainWindow ):
 	def __init__( self ):
 		super( self.__class__, self ).__init__()
 		self.__class__.instance = self
+		QHelper.UIInstance = self
 		self.build()
 	
 	def build( self ):
@@ -37,7 +38,7 @@ class UI( QtGui.QMainWindow ):
 		#self.RandomActionThread = RandomActionThread()
 		
 		### Show the MainWindow
-		self.show()
+		#self.show()
 
 
 
@@ -87,8 +88,8 @@ class Action:
 	def logoutActionCallback( self ):
 		DBConf.set( 'username', '' )
 		DBConf.set( 'passwd', '' )
-		self.master.contact().hide()
-		self.master.login().show()
+		self.master.View.login().show()
+		self.master.hide()
 	
 	def loginActionCallback( self ):
 		self.master.View.login().show()
@@ -142,7 +143,7 @@ class Action:
 	
 	def loginSubmitCallback( self ):
 		for k, v in self.master.View.login().values().items():
-			DBConf.set( k, type( DBConf.get( k ) )( v.text() ) )
+			DBConf.set( k, type( DBConf.get( k ) )( QHelper.str( v ) ) )
 			DBJob.set( 'connectActionTrigger' )
 	
 	def preferencesSubmitCallback( self ):
@@ -176,6 +177,7 @@ class Action:
 	def SIGNALCBloginSuccessCallback( self ):
 		print '::CONNECT:master:loginSuccess'
 		self.master.View.login().hide()
+		self.master.show()
 		self.master.View.contact().show()
 		self.master.View.chat().hide()
 		DBJob.set( 'helloActionTrigger' )
@@ -192,8 +194,9 @@ class Control:
 	
 	def build( self ):
 		self.menuControl = self.master.menuBar()
-		self.fileMenuControl = self.menuControl.addMenu( '&File' )
-		self.fileMenuControl.addAction( self.master.Action.exitAction )
+		self.mainMenuControl = self.menuControl.addMenu( '&Main' )
+		self.mainMenuControl.addAction( self.master.Action.exitAction )
+		self.mainMenuControl.addAction( self.master.Action.logoutAction )
 		self.viewMenuControl = self.menuControl.addMenu( '&View' )
 		self.viewMenuControl.addAction( self.master.Action.projectsAction )
 		self.viewMenuControl.addAction( self.master.Action.preferencesAction )
@@ -352,7 +355,7 @@ class View:
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QChatView()
-		return self.main.chat
+		return self.master.chat
 	"""
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
@@ -505,22 +508,6 @@ class View:
 
 
 
-class QHelper:
-	@classmethod
-	def getValue( cls, widget ):
-		if isinstance( widget, QtGui.QLineEdit ) or issubclass( widget.__class__, QtGui.QLineEdit ):
-			return widget.text()
-		elif isinstance( widget, QtGui.QComboBox ) or issubclass( widget.__class__, QtGui.QComboBox ):
-			return widget.currentText()
-		elif isinstance( widget, QtGui.QTextEdit ) or issubclass( widget.__class__, QtGui.QTextEdit ):
-			return widget.toPlainText()
-	
-	@classmethod
-	def master( cls, widget=None ):
-		return UI.instance
-
-
-
 class QForm( QtGui.QWidget ):
 	def __init__( self, parent=None ):
 		if parent:
@@ -567,6 +554,15 @@ class QContactView( QtGui.QWidget ):
 		grid.addWidget( QContactFilter( self ), 0, 0 )
 		grid.addWidget( QContactList( self ), 1, 0 )
 		self.setLayout( grid )
+
+
+
+class QContactFilter( QtGui.QLineEdit ):
+	def __init__( self, parent ):
+		super( self.__class__, self ).__init__( parent )
+		self.setPlaceholderText( 'Filter' )
+
+
 
 class QContactList( QtGui.QGroupBox ):
 	def __init__( self, parent ):
@@ -667,12 +663,14 @@ class QChatView( QtGui.QWidget ):
 		grid = QtGui.QGridLayout()
 		
 		chatDialog = QChatDialog( self )
-		chatDialog.setMaximumHeight( 50 )
+		chatDialog.setMaximumHeight( 400 )
 		grid.addWidget( chatDialog, 0, 0 )
+		
+		grid.addWidget( QtGui.QLabel( 'Your message:' ), 1, 0 )
 		
 		chatInput = QChatInput( self )
 		chatInput.setMaximumHeight( 50 )
-		grid.addWidget( chatInput, 1, 0 )
+		grid.addWidget( chatInput, 2, 0 )
 		
 		self.setLayout( grid )
 
@@ -877,7 +875,6 @@ class QProjectData( QtGui.QTextEdit ):
 	
 	def projectDataCallback( self, projectData ):
 		print '::CONNECT:QProjectData:projectData', projectData
-		import json
 		self.clear()
 		data = '<table width="100%" cellspacing="4" cellpadding="0">'
 		n=0

@@ -1,23 +1,13 @@
 #!/usr/bin/python
 # -*-coding: utf-8 -*-
 
-import shelve, time, sys
+import shelve, time, os, sys
 from transport import Transport
 from db import DBConf, DBSchedule
+from helper import QHelper
 from unidecode import unidecode
 
-def _str( string ):
-	#print '::str', type( string )
-	#print string
-	if hasattr( string, 'toUtf8' ):
-		string = str( string.toUtf8() ).decode( 'utf-8' )
-	elif type( string ) == type( u' ' ):
-		string = unidecode( string )
-	elif not type( string ) == str:
-		string = str( string )
-	else:
-		string = str( string )
-	return string
+
 
 class Wrap:
 	_dbs = {}
@@ -29,15 +19,15 @@ class Wrap:
 			name = recipient
 		else:
 			name = sender
-		filename = 'history/' + DBConf.get( 'username' ) + '_' + name + '.db'
+		filename = os.path.join( 'data', 'history', DBConf.get( 'username' )+'_'+name+'.db' )
 		if not filename in cls._dbs.keys():
 			cls._dbs[filename] = shelve.open( filename )
-		cls._dbs[filename][str( time.time() )] = {'ts':str( int( time.time() ) ),'sender':_str(sender),'recipient':_str(recipient),'message':_str(message)}
+		cls._dbs[filename][str( time.time() )] = {'ts':str( int( time.time() ) ),'sender':QHelper.str(sender),'recipient':QHelper.str(recipient),'message':QHelper.str(message)}
 		cls._dbs[filename].sync()
 	
 	@classmethod
 	def getHistory( cls, contact ):
-		filename = 'history/' + DBConf.get( 'username' ) + '_' + contact + '.db'
+		filename = os.path.join( 'data', 'history', DBConf.get( 'username' )+'_'+contact+'.db' )
 		if not filename in cls._dbs.keys():
 			cls._dbs[filename] = shelve.open( filename )
 		keys = cls._dbs[filename].keys()
@@ -62,17 +52,17 @@ class Wrap:
 	@classmethod
 	def report( cls, **kwarg ):
 		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
-			_str( kwarg.get( 'h', 0 ) ),
-			_str( kwarg.get( 'm', 0 ) ),
-			_str( kwarg.get( 'project', '' ) ),
-			_str( kwarg.get( 'summary', '' ) ),
+			QHelper.str( kwarg.get( 'h', 0 ) ),
+			QHelper.str( kwarg.get( 'm', 0 ) ),
+			QHelper.str( kwarg.get( 'project', '' ) ),
+			QHelper.str( kwarg.get( 'summary', '' ) ),
 		) )
 		"""
 		Transport.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
-			_str( kwarg.get( 'h', 0 ) ),
-			_str( kwarg.get( 'm', 0 ) ),
-			_str( kwarg.get( 'project', '' ) ),
-			_str( kwarg.get( 'summary', '' ) ),
+			QHelper.str( kwarg.get( 'h', 0 ) ),
+			QHelper.str( kwarg.get( 'm', 0 ) ),
+			QHelper.str( kwarg.get( 'project', '' ) ),
+			QHelper.str( kwarg.get( 'summary', '' ) ),
 		) )
 		"""
 	
@@ -84,8 +74,8 @@ class Wrap:
 	@classmethod
 	def send( cls, to, message ):
 		cls.history( DBConf.get( 'username' ), to, message )
-		Transport.execute( 'sendMessage', _str( to ), _str( message ) )
-		#Transport.sendMessage( _str( to ), _str( message ) )
+		Transport.execute( 'sendMessage', QHelper.str( to ), QHelper.str( message ) )
+		#Transport.sendMessage( QHelper.str( to ), QHelper.str( message ) )
 	
 	@classmethod
 	def messageCallbackHook( cls, sender, message ):
