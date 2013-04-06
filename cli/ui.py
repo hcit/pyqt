@@ -1094,7 +1094,7 @@ class QReportView( QForm ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'reportSubmit' ), self.reportSubmitCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'reportCancel' ), self.reportCancelCallback )
 	
-	def preferencesSubmitCallback( self ):
+	def reportSubmitCallback( self ):
 		print  '::CONNECT:QReportView:reportSubmit'
 		data = self.values()
 		DBJob.set( 'reportActionTrigger', **data )
