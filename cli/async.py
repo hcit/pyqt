@@ -53,8 +53,8 @@ class ExecutionThread( QtCore.QThread ):
 			time.sleep( 0.4 )
 			#self.emit( QtCore.SIGNAL( 'executionSignal()' ) )
 	
-	def connectActionTrigger( self ):
-		Wrap.connect()
+	def connectActionTrigger( self, username, passwd ):
+		Wrap.connect( username, passwd )
 	
 	def helloActionTrigger( self ):
 		Wrap.hello()

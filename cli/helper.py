@@ -11,11 +11,12 @@ class QHelper:
 	@classmethod
 	def getValue( cls, widget ):
 		if isinstance( widget, QtGui.QLineEdit ) or issubclass( widget.__class__, QtGui.QLineEdit ):
-			return widget.text()
+			value = widget.text()
 		elif isinstance( widget, QtGui.QComboBox ) or issubclass( widget.__class__, QtGui.QComboBox ):
-			return widget.currentText()
+			value = widget.currentText()
 		elif isinstance( widget, QtGui.QTextEdit ) or issubclass( widget.__class__, QtGui.QTextEdit ):
-			return widget.toPlainText()
+			value = widget.toPlainText()
+		return cls.str( value )
 	
 	@classmethod
 	def master( cls, widget=None ):

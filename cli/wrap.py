@@ -3,7 +3,7 @@
 
 import shelve, time, os, sys
 from transport import Transport
-from db import DBConf, DBSchedule
+from db import DBConf, DBSchedule, DBHistory
 from helper import QHelper
 from unidecode import unidecode
 
@@ -35,7 +35,9 @@ class Wrap:
 		return [cls._dbs[filename][key] for key in keys]
 	
 	@classmethod
-	def connect( cls ):
+	def connect( cls, username, passwd ):
+		Transport.username = username
+		Transport.passwd = passwd
 		Transport.listener = cls
 		res = Transport.execute( '_connect' )
 		#res = Transport._connect()
