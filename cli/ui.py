@@ -4,7 +4,7 @@ import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
 from async import ListenerThread, ExecutionThread
-from db import DBConf, DBJob, DBCron, DBSchedule, DBAccount
+from db import DBConf, DBJob, DBCron, DBSchedule, DB
 from helper import QHelper
 
 
@@ -611,7 +611,7 @@ class QContact( QtGui.QFrame ):
 		self.messagesNew = {}
 		self.status = status
 		self.selected = False
-		self.added = False
+		self.group = None
 		self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
 		self.buttons = QtGui.QWidget( self )
 		
@@ -624,7 +624,7 @@ class QContact( QtGui.QFrame ):
 		self.buttons.chatButton = QtGui.QPushButton( 'chat' )
 		self.buttons.chatButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
 		self.buttons.addButton = QtGui.QPushButton( 'Add to List' )
-		self.buttons.addButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'addContact' ), self.name, 'general' ) )
+		self.buttons.addButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'addContact' ), self.name, 1 ) )
 		self.buttons.removeButton = QtGui.QPushButton( 'Remove from List' )
 		self.buttons.removeButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'removeContact' ), self.name ) )
 		
@@ -669,19 +669,15 @@ class QContact( QtGui.QFrame ):
 	def addContactCallback( self, contact, group ):
 		print '::CONNECT:QContact:addContact', contact
 		if self.name == contact:
-			contacts = DBAccount.get( 'contacts', None )
-			if contacts:
-				DBAccount['contacts'][self.name] = { 'group':group }
-			else:
-				DBAccount['contacts'] = { self.name: { 'group':'general' } }
+			self.group = group
+			if not DB.execute( "INSERT OR IGNORE INTO `contact` ( `name`, `contact_group_id` ) VALUES ( ?, ? )", self.name, self.group ):
+				DB.execute( "UPDATE `contact` SET `contact_group_id`=? WHERE `name`=? )", self.group, self.name )
 			self.update()
 	
 	def removeContactCallback( self, contact ):
 		print '::CONNECT:QContact:removeContact', contact
 		if self.name == contact:
-			if DBAccount.get( 'contacts', None ):
-				if self.name in DBAccount['contacts'].keys():
-					del DBAccount['contacts'][self.name]
+			DB.execute( "DELETE FROM `contact` WHERE `name`=?", self.name )
 			self.update()
 	
 	def pickedContactCallback( self, contact ):
@@ -712,8 +708,9 @@ class QContact( QtGui.QFrame ):
 		if self.selected:
 			self.messagesNew = {}
 		
-		self.added = self.name in DBAccount.get( 'contacts', {} ).keys()
-		if self.added:
+		result = DB.execute( "SELECT `contact_group_id` FROM `contact` WHERE `name`=?", self.name )
+		self.group = result and result[0]['contact_group_id'] or None
+		if self.group:
 			self.buttons.addButton.show()
 			self.buttons.removeButton.hide()
 			self.nameLabel.setStyleSheet( 'QLabel { color:#333; }' )

@@ -67,13 +67,6 @@ class DBConf( DBBase ):
 
 
 
-class DBAccount( DBBase ):
-	filepath = [ 'data' ]
-	filename = 'account'
-	fileext = 'db'
-
-
-
 class DBJob( DBBase ):
 	filepath = [ 'data' ]
 	filename = 'job'
@@ -197,3 +190,63 @@ class DBHistory( DBBase ):
 		keys = cls.keys()
 		keys.sort()
 		return [cls.handle()[key] for key in keys]
+
+
+
+class DB:
+	filepath = [ 'data', 'db' ]
+	filename = 'account'
+	fileext = 'db'
+	_conn = None
+	_cur = None
+	
+	"""
+sqlite> CREATE TABLE contact( id INT, name TEXT, contact_group_id INT );
+sqlite> CREATE TABLE contact_group( id INT, name TEXT );
+
+last_id = cls._cur.lastrowid
+	"""
+	
+	@classmethod
+	def path( cls ):
+		path = os.path.join( *cls.filepath )
+		path = os.path.join( path, '.'.join( [ cls.filename, cls.fileext ] ) )
+		print ( cls.filename and path or ':memory:' )
+		return ( cls.filename and path or ':memory:' )
+	
+	@classmethod
+	def _connect( cls ):
+		import sqlite3
+		cls._conn = sqlite3.connect( cls.path() )
+		cls._conn.row_factory = sqlite3.Row
+		cls._cur = cls._conn.cursor()
+		
+	@classmethod
+	def conn( cls ):
+		if not cls._conn:
+			cls._connect()
+		return cls._conn
+	
+	@classmethod
+	def cur( cls ):
+		if not cls._cur:
+			cls._connect()
+		return cls._cur
+	
+	@classmethod
+	def execute( cls, queryString, *arg ):
+		print '::DB::execute', queryString, arg
+		cls.cur().execute( queryString, arg )
+		
+		if queryString.strip().lower().startswith( 'select' ):
+			# SELECT: return result
+			return cls.cur().fetchall()
+		else:
+			# write-query: commit after execution 
+			#cls.cur().commit()
+			
+			if queryString.strip().lower().startswith( 'insert' ):
+				# INSERT: return last inserted id
+				return cls.cur().lastrowid
+			else:
+				return cls.cur().rowcounts
