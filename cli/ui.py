@@ -580,6 +580,9 @@ class QContactList( QtGui.QGroupBox ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'receiveMessage' ), self.receiveMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
+		for row in DB.execute( "SELECT `contact`.*, `contact_group`.`name` FROM `contact`, `contact_group` WHERE `contact`.`contact_group_id`=`contact_group`.`id`" ):
+			self.radioList[row['name']] = QContact( row['name'], 'offline', self )
+			self.layout.addWidget( self.radioList[row['name']] )
 	
 	def receiveMessageCallback( self, contact, message ):
 		print '::CONNECT:QContact:receiveMessage', contact, message
@@ -624,7 +627,7 @@ class QContact( QtGui.QFrame ):
 		self.buttons.chatButton = QtGui.QPushButton( 'chat' )
 		self.buttons.chatButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
 		self.buttons.addButton = QtGui.QPushButton( 'Add to List' )
-		self.buttons.addButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'addContact' ), self.name, 1 ) )
+		self.buttons.addButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'addContact' ), self.name, 'general' ) )
 		self.buttons.removeButton = QtGui.QPushButton( 'Remove from List' )
 		self.buttons.removeButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'removeContact' ), self.name ) )
 		
@@ -670,8 +673,9 @@ class QContact( QtGui.QFrame ):
 		print '::CONNECT:QContact:addContact', contact
 		if self.name == contact:
 			self.group = group
-			if not DB.execute( "INSERT OR IGNORE INTO `contact` ( `name`, `contact_group_id` ) VALUES ( ?, ? )", self.name, self.group ):
-				DB.execute( "UPDATE `contact` SET `contact_group_id`=? WHERE `name`=? )", self.group, self.name )
+			group_id = DB.execute( "SELECT `id` FROM `contact_group` WHERE `name`=?", self.group )[0]['id']
+			if not DB.execute( "INSERT OR IGNORE INTO `contact` ( `name`, `contact_group_id` ) VALUES ( ?, ? )", self.name, group_id ):
+				DB.execute( "UPDATE `contact` SET `contact_group_id`=? WHERE `name`=? )", group_id, self.name )
 			self.update()
 	
 	def removeContactCallback( self, contact ):
@@ -707,12 +711,16 @@ class QContact( QtGui.QFrame ):
 	def update( self ):
 		if self.selected:
 			self.messagesNew = {}
-		
-		result = DB.execute( "SELECT `contact_group_id` FROM `contact` WHERE `name`=?", self.name )
-		self.group = result and result[0]['contact_group_id'] or None
+		result = DB.execute( "SELECT `contact_group_id` FROM `contact` WHERE `name`=? LIMIT 1", self.name )
+		group_id = result and result[0]['contact_group_id'] or None
+		if group_id:
+			self.group = DB.execute( "SELECT `name` FROM `contact_group` WHERE `id`=?", group_id )[0]['name']
+		else:
+			self.group = None
+		print '::CONTACT::GROUP', self.group
 		if self.group:
-			self.buttons.addButton.show()
-			self.buttons.removeButton.hide()
+			self.buttons.addButton.hide()
+			self.buttons.removeButton.show()
 			self.nameLabel.setStyleSheet( 'QLabel { color:#333; }' )
 		else:
 			self.buttons.addButton.show()

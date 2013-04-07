@@ -201,8 +201,12 @@ class DB:
 	_cur = None
 	
 	"""
-sqlite> CREATE TABLE contact( id INT, name TEXT, contact_group_id INT );
-sqlite> CREATE TABLE contact_group( id INT, name TEXT );
+sqlite> CREATE TABLE `contact_group`( `id` INTEGER PRIMARY KEY, `name` TEXT );
+sqlite> INSERT INTO `contact_group` ( `name` ) VALUES ( 'general' );
+sqlite> INSERT INTO `contact_group` ( `name` ) VALUES ( 'friends' );
+sqlite> INSERT INTO `contact_group` ( `name` ) VALUES ( 'work' );
+sqlite> INSERT INTO `contact_group` ( `name` ) VALUES ( 'family' );
+sqlite> CREATE TABLE `contact` ( `id` INTEGER PRIMARY KEY, `name` TEXT, `contact_group_id` INTEGER, FOREIGN KEY ( `contact_group_id` ) REFERENCES contact_group( `id` ) );
 
 last_id = cls._cur.lastrowid
 	"""
@@ -211,7 +215,6 @@ last_id = cls._cur.lastrowid
 	def path( cls ):
 		path = os.path.join( *cls.filepath )
 		path = os.path.join( path, '.'.join( [ cls.filename, cls.fileext ] ) )
-		print ( cls.filename and path or ':memory:' )
 		return ( cls.filename and path or ':memory:' )
 	
 	@classmethod
@@ -240,13 +243,19 @@ last_id = cls._cur.lastrowid
 		
 		if queryString.strip().lower().startswith( 'select' ):
 			# SELECT: return result
-			return cls.cur().fetchall()
+			result = cls.cur().fetchall()
+			print '::DB::select::fetchall', result
+			return result
 		else:
 			# write-query: commit after execution 
-			#cls.cur().commit()
+			cls.conn().commit()
 			
 			if queryString.strip().lower().startswith( 'insert' ):
 				# INSERT: return last inserted id
+				print '::DB::insert::rowcount', cls.cur().rowcount
+				print '::DB::insert::lastrowid', cls.cur().lastrowid
 				return cls.cur().lastrowid
 			else:
-				return cls.cur().rowcounts
+				print '::DB::update::rowcount', cls.cur().rowcount
+				print '::DB::update::lastrowid', cls.cur().lastrowid
+				return cls.cur().rowcount
