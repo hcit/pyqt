@@ -136,18 +136,17 @@ class Action:
 	def SIGNALCBreportCancelCallback( self ):
 		print '::CONNECT:master:reportCancel'
 	
+	"""
 	def reportActionTrigger( self ):
 		pass
+	"""
 	
 	def SIGNALCBcontactStatusCallback( self, contact, status ):
 		print '::CONNECT:master:contactStatus', contact, status
-		#self.master.View.contactItem( contact, status )
 	
 	def SIGNALCBpickedContactCallback( self, contact ):
 		print '::CONNECT:master:pickedContact', contact
 		self.master.View.chat().show()
-		#for message in self.master.View.contactItem( contact ).messages():
-		#	self.master.View.chatDialog().message( message['ts'], message['sender'], message['message'] )
 	
 	def SIGNALCBsendMessageCallback( self, contact, message ):
 		print '::CONNECT:master:sendMessage', contact, message
@@ -155,9 +154,6 @@ class Action:
 	
 	def SIGNALCBreceiveMessageCallback( self, contact, message ):
 		print '::CONNECT:master:receiveMessage', contact, message
-		#self.master.View.contactItem( contact ).receiveFrom( message, str( time.time() ) )
-		#if self.master.View.contactList().value() == contact:
-		#	self.master.View.chatDialog().message( time.time(), contact, message )
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
@@ -165,26 +161,13 @@ class Action:
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
 		print '::CONNECT:master:projectList', projectList
-		#for project, title in projectList:
-		#	self.master.View.projectItem( project, title )
 	
 	def SIGNALCBprojectDataCallback( self, projectData ):
 		print '::CONNECT:master:projectData', projectData
-		#project = self.master.View.projectList().value()
-		#self.master.View.projectData().show( project, projectData )
 	
 	def SIGNALCBpickedProjectCallback( self, project ):
 		print '::CONNECT:master:pickedProject', project
-		#project = self.master.View.projectList().value()
-		#self.master.projects.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
 		DBJob.set( 'projectDataActionTrigger', None, project )
-	
-	"""
-	def reportProjectListActionTrigger( self, projects ):
-		self.master.View.reportProjectList().clear()
-		for project, title in projects:
-			self.master.View.reportProjectItem( project )
-	"""
 
 
 
@@ -221,167 +204,23 @@ class View:
 			self.master.setCentralWidget( self.master.contact )
 		return self.master.contact
 	
-	"""
-	def contact( self ):
-		if not hasattr( self.master, 'contact' ):
-			self.master.contact = QtGui.QWidget()
-			self.master.contact.resize( 250, 150 )
-			self.master.contact.move( 450, 450 )
-		
-			grid = QtGui.QGridLayout()
-			grid.addWidget( self.contactFilter( self.master.contact ), 0, 0 )
-			grid.addWidget( self.contactList( self.master.contact ), 1, 0 )
-			self.master.contact.setLayout( grid )
-			self.master.setCentralWidget( self.master.contact )
-		return self.master.contact
-	
-	def contactList( self, parent=None ):
-		if not hasattr( self, '_contactList' ):
-			self._contactList = QContactList( self.master.contact )
-		return self._contactList
-	
-	def contactFilter( self, parent=None ):
-		if not hasattr( self, '_contactFilter' ):
-			self._contactFilter = QtGui.QLineEdit( parent )
-		return self._contactFilter
-	"""
-	
-	"""
-	def contactItem( self, contact, status=None ):
-		if not contact in self._contactList.radioList.keys():
-			self._contactList.radioList[contact] = QContact( contact, self._contactList )
-			self._contactList.layout.addWidget( self._contactList.radioList[contact] )
-		self._contactList.radioList[contact].status = status or self._contactList.radioList[contact].status
-		self._contactList.radioList[contact].update()
-		return self._contactList.radioList[contact]
-	"""
-	
 	#################### VIEW login ####################
 	def login( self ):
 		if not hasattr( self.master, 'login' ):
 			self.master.login = QLoginView()
 		return self.master.login
 	
-	"""
-	def login( self ):
-		if not hasattr( self.master, 'login' ):
-			self.master.login = QtGui.QWidget()
-			self.master.login.fields = {}
-			self.master.login.setWindowTitle( 'Login' + ' - ' + DBConf.get( 'appname' ) )
-			self.master.login.resize( 450, 200 )
-			self.master.login.move( 350, 350 )
-		
-			grid = QtGui.QGridLayout()
-			
-			self.master.login.status = QtGui.QLabel( 'Please enter your login and password' )
-			grid.addWidget( self.master.login.status, 0, 0, 2, 2 )
-			
-			grid.addWidget( QtGui.QLabel( 'username' ), 2, 0 )
-			grid.addWidget( self.loginField( self.master.login, 'username', DBConf.get( 'username' ) ), 2, 1 )
-			
-			grid.addWidget( QtGui.QLabel( 'password' ), 3, 0 )
-			grid.addWidget( self.loginField( self.master.login, 'passwd', DBConf.get( 'passwd' ) ), 3, 1 )
-			
-			self.master.login.submit = QtGui.QPushButton( 'Login', self.master.login )
-			self.master.connect( self.master.login.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.loginSubmitCallback )
-			grid.addWidget( self.master.login.submit, 4, 0 )
-			
-			self.master.login.quit = QtGui.QPushButton( 'Cancel', self.master.login )
-			self.master.connect( self.master.login.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
-			grid.addWidget( self.master.login.quit, 4, 1 )
-			
-			self.master.login.preferences = QtGui.QPushButton( 'Preferences', self.master.login )
-			self.master.connect( self.master.login.preferences, QtCore.SIGNAL( 'clicked()' ), lambda:self.master.View.login().hide() or self.master.Action.preferencesActionCallback() )
-			grid.addWidget( self.master.login.preferences, 5, 0, 2 ,1 )
-			
-			self.master.login.setLayout( grid )
-		return self.master.login
-	
-	def loginField( self, parent, key, value='' ):
-		if not key in self.master.login.fields.keys():
-			self.master.login.fields[key] = QtGui.QLineEdit( str( value ), parent )
-		return self.master.login.fields[key]
-	"""
-	
 	#################### VIEW projects ####################
 	def projects( self ):
 		if not hasattr( self.master, 'projects' ):
 			self.projects = QProjectView()
 		return self.projects
-	"""
-	def projects( self ):
-		if not hasattr( self.master, 'projects' ):
-			self.master.projects = QtGui.QWidget()
-			self.master.projects.setWindowTitle( 'Projects' + ' - ' + DBConf.get( 'appname' ) )
-			self.master.projects.resize( 550, 450 )
-			self.master.projects.move( 350, 350 )
-		
-			grid = QtGui.QGridLayout()
-			grid.addWidget( self.projectData( self.master.projects ), 0, 0, 2, 1 )
-			grid.addWidget( self.projectFilter( self.master.projects ), 0, 1 )
-			grid.addWidget( self.projectList( self.master.projects ), 1, 1 )
-			grid.setColumnMinimumWidth( 0, 300 )
-			self.master.projects.setLayout( grid )
-		return self.master.projects
-	
-	def projectData( self, parent=None ):
-		if not hasattr( self, '_projectData' ):
-			self._projectData = QProjectData( parent )
-			self._projectData.setMaximumHeight( 1000 )
-		return self._projectData
-	
-	def projectFilter( self, parent=None ):
-		if not hasattr( self, '_projectFilter' ):
-			self._projectFilter = QtGui.QLineEdit( parent )
-		return self._projectFilter
-	
-	def projectList( self, parent=None ):
-		if not hasattr( self, '_projectList' ):
-			self._projectList = QProjectList( self.master.projects )
-		return self._projectList
-	"""
-	
-	"""
-	def projectItem( self, project, status=None ):
-		if not project in self._projectList.radioList.keys():
-			self._projectList.radioList[project] = QProject( project, self._projectList )
-			self._projectList.radioList[project].clicked.connect( self.master.Action.pickProjectActionCallback )
-			self._projectList.layout.addWidget( self._projectList.radioList[project] )
-		self._projectList.radioList[project].status = status or self._projectList.radioList[project].status
-		self._projectList.radioList[project].update()
-		return self._projectList.radioList[project]
-	"""
 	
 	#################### VIEW chat ####################
 	def chat( self ):
 		if not hasattr( self.master, 'chat' ):
 			self.master.chat = QChatView()
 		return self.master.chat
-	"""
-	def chat( self ):
-		if not hasattr( self.master, 'chat' ):
-			self.master.chat = QtGui.QWidget()
-			self.master.chat.resize( 600, 450 )
-			self.master.chat.move( 350, 350 )
-		
-			grid = QtGui.QGridLayout()
-			grid.addWidget( self.chatDialog( self.master.chat ), 0, 0 )
-			grid.addWidget( self.chatInput( self.master.chat ), 1, 0 )
-			self.master.chat.setLayout( grid )
-		return self.master.chat
-	
-	def chatDialog( self, parent=None ):
-		if not hasattr( self, '_chatDialog' ):
-			self._chatDialog = QChatDialog( parent )
-			self._chatDialog.setMaximumHeight( 1000 )
-		return self._chatDialog
-	
-	def chatInput( self, parent=None ):
-		if not hasattr( self, '_chatInput' ):
-			self._chatInput = QChatInput( '', parent )
-			self._chatInput.setMaximumHeight( 50 )
-		return self._chatInput
-	"""
 	
 	#################### VIEW preferences ####################
 	def preferences( self ):
@@ -389,123 +228,12 @@ class View:
 			self.master.preferences = QPreferencesView()
 		return self.master.preferences
 	
-	"""
-	def preferences( self ):
-		if not hasattr( self.master, 'preferences' ):
-			self.master.preferences = QtGui.QWidget()
-			self.master.preferences.fields = {}
-			self.master.preferences.setWindowTitle( 'Preferences' + ' - ' + DBConf.get( 'appname' ) )
-			self.master.preferences.resize( 450, 550 )
-			self.master.preferences.move( 350, 350 )
-		
-			grid = QtGui.QGridLayout()
-			n = 0
-			for key, value in DBConf.list():
-				grid.addWidget( QtGui.QLabel( key ), n, 0 )
-				grid.addWidget( self.preferencesField( self.master.preferences, key, value ), n, 1 )
-				n += 1
-			
-			self.master.preferences.submit = QtGui.QPushButton( 'Save', self.master.preferences )
-			self.master.connect( self.master.preferences.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.preferencesSubmitCallback )
-			grid.addWidget( self.master.preferences.submit, n, 0 )
-			
-			self.master.preferences.cancel = QtGui.QPushButton( 'Cancel', self.master.preferences )
-			self.master.connect( self.master.preferences.cancel, QtCore.SIGNAL( 'clicked()' ), self.master.Action.preferencesCancelCallback )
-			grid.addWidget( self.master.preferences.cancel, n, 1 )
-			
-			self.master.preferences.setLayout( grid )
-		return self.master.preferences
-	
-	def preferencesField( self, parent, key, value ):
-		if not key in self.master.preferences.fields.keys():
-			self.master.preferences.fields[key] = QtGui.QLineEdit( str( value ), parent )
-		return self.master.preferences.fields[key]
-	"""
 	
 	#################### VIEW report ####################
 	def report( self ):
 		if not hasattr( self.master, 'report' ):
 			self.master.report = QReportView()
 		return self.master.report
-	"""
-	def report( self ):
-		if not hasattr( self.master, 'report' ):
-			self.master.report = QtGui.QWidget()
-			self.master.report.fields = {}
-			self.master.report.setWindowTitle( 'Report' + ' - ' + DBConf.get( 'appname' ) )
-			self.master.report.resize( 200, 200 )
-			self.master.report.move( 350, 350 )
-		
-			grid = QtGui.QGridLayout()
-			
-			self.master.report.status = QtGui.QLabel( 'Report' )
-			grid.addWidget( self.master.report.status, 0, 0, 2, 2 )
-			
-			grid.addWidget( self.reportField( self.master.report, 'h', 'hours' ), 2, 0 )
-			
-			grid.addWidget( self.reportField( self.master.report, 'm', 'minutes' ), 2, 1 )
-			
-			grid.addWidget( QtGui.QLabel( 'Project' ), 3, 0 )
-			grid.addWidget( self.reportProjectList( self.master.report ), 3, 1 )
-			
-			grid.addWidget( QtGui.QLabel( 'Summary' ), 4, 0, 1, 2 )
-			grid.addWidget( self.reportSummary( self.master.report, 'summary' ), 5, 0, 1, 2 )
-			
-			self.master.report.submit = QtGui.QPushButton( 'Send', self.master.report )
-			self.master.connect( self.master.report.submit, QtCore.SIGNAL( 'clicked()' ), self.master.Action.reportSubmitCallback )
-			grid.addWidget( self.master.report.submit, 6, 0 )
-			
-			self.master.report.cancel = QtGui.QPushButton( 'Cancel', self.master.report )
-			self.master.connect( self.master.report.cancel, QtCore.SIGNAL( 'clicked()' ), self.master.Action.reportCancelCallback )
-			grid.addWidget( self.master.report.cancel, 6, 1 )
-			
-			self.master.report.setLayout( grid )
-		return self.master.report
-	
-	def reportField( self, parent, key, placeholder='', value='' ):
-		if not key in self.master.report.fields.keys():
-			self.master.report.fields[key] = QtGui.QLineEdit( str( value ), parent )
-			self.master.report.fields[key].setPlaceholderText( placeholder )
-		return self.master.report.fields[key]
-	
-	def reportSummary( self, parent, key ):
-		if not key in self.master.report.fields.keys():
-			self.master.report.fields[key] = QtGui.QTextEdit( parent )
-		return self.master.report.fields[key]
-	
-	def reportProjectList( self, parent=None ):
-		if not hasattr( self, '_reportProjectList' ):
-			self._reportProjectList = QtGui.QComboBox( parent )
-			self.master.report.fields['project'] = self._reportProjectList
-		return self._reportProjectList
-	
-	def reportProjectItem( self, value ):
-		if hasattr( self, '_reportProjectList' ):
-			self._reportProjectList.addItem( value )
-	"""
-	
-	"""
-	def reportField( self, parent, key, placeholder='', value='' ):
-		if not key in self.master.report.fields.keys():
-			self.master.report.fields[key] = QtGui.QLineEdit( str( value ), parent )
-			self.master.report.fields[key].setPlaceholderText( placeholder )
-		return self.master.report.fields[key]
-	
-	def reportSummary( self, parent, key ):
-		if not key in self.master.report.fields.keys():
-			self.master.report.fields[key] = QtGui.QTextEdit( parent )
-		return self.master.report.fields[key]
-	
-	def reportProjectList( self, parent=None ):
-		if not hasattr( self, '_reportProjectList' ):
-			self._reportProjectList = QtGui.QComboBox( parent )
-			self.master.report.fields['project'] = self._reportProjectList
-		return self._reportProjectList
-	
-	def reportProjectItem( self, value ):
-		if hasattr( self, '_reportProjectList' ):
-			self._reportProjectList.addItem( value )
-	"""
 
 
 
@@ -738,18 +466,11 @@ class QContact( QtGui.QFrame ):
 		self.messagesLabel.setText( ( len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or '' ) )
 	
 	def receiveFrom( self, message, ts=None ):
-		#if not ts:
-		#	ts = str( time.time() )
-		#self.messagesTime.append( ts )
-		#self.messagesList[ts] = { 'ts':str( ts ), 'sender':self.name, 'recipient':DBConf.get( 'username' ), 'message':message }
 		self.messagesNew[ts] = message
 		self.update()
 	
 	def sendTo( self, message ):
 		pass
-		#ts = str( time.time() )
-		#self.messagesTime.append( ts )
-		#self.messagesList[ts] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':self.name, 'message':message }
 
 
 
@@ -942,8 +663,6 @@ class QProject( QtGui.QRadioButton ):
 	
 	def projectListCallback( self, projectList ):
 		print '::CONNECT:QProject:projectList', projectList
-		#for project, title in projectList:
-		#	self.master.View.projectItem( project, title )
 	
 	def pickedProjectCallback( self, project ):
 		print '::CONNECT:QProject:pickedProject', project
@@ -1034,12 +753,10 @@ class QLoginView( QForm ):
 		
 		self.quit = QtGui.QPushButton( 'Cancel', self )
 		self.quit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'loginCancel' ) ) )
-		#QHelper.master().connect( self.quit, QtCore.SIGNAL( 'clicked()' ), QtGui.qApp.quit )
 		
 		self.preferences = QtGui.QPushButton( 'Preferences', self )
 		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'loginSubmit' ), QHelper.getValue( self.fields['username'] ), QHelper.getValue( self.fields['passwd'] ) ) )
 		QHelper.master().connect( self.preferences, QtCore.SIGNAL( 'clicked()' ), lambda:self.hide() or QHelper.master().Action.preferencesActionCallback() )
-		#self.preferences.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesDialog' ) ) )
 		
 		hbox = QtGui.QHBoxLayout()
 		hbox.addStretch( 1 )
@@ -1071,12 +788,8 @@ class QLoginView( QForm ):
 		print  '::CONNECT:QLoginView:loginSuccess'
 		DBConf.set( 'username', QHelper.getValue( self.fields['username'] ) )
 		DBConf.set( 'passwd', QHelper.getValue( self.fields['passwd'] ) )
-		#self.status.setStyleSheet( 'QLabel { color : blue; }' )
-		#self.status.setText( 'Login OK' )
-		#time.sleep( 1 )
 		self.hide()
 		self.status.setText( '' )
-		#self.status.setStyleSheet( 'QLabel { color : black; }' )
 	
 	def loginErrorCallback( self, e ):
 		print  '::CONNECT:QLoginView:loginError', e
@@ -1116,11 +829,9 @@ class QPreferencesView( QForm ):
 			n += 1
 		
 		self.submit = QtGui.QPushButton( 'Save', self )
-		#QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesSubmitCallback )
 		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesSubmit' ) ) )
 			
 		self.cancel = QtGui.QPushButton( 'Cancel', self )
-		#QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.preferencesCancelCallback )
 		self.cancel.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesCancel' ) ) )
 		
 		hbox = QtGui.QHBoxLayout()
@@ -1173,12 +884,10 @@ class QReportView( QForm ):
 		grid.addWidget( self.textEditField( 'summary' ), 5, 0, 1, 2 )
 		
 		self.submit = QtGui.QPushButton( 'Send', self )
-		#QHelper.master().connect( self.submit, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportSubmitCallback )
 		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'reportSubmit' ) ) )
 		grid.addWidget( self.submit, 6, 0 )
 		
 		self.cancel = QtGui.QPushButton( 'Cancel', self )
-		#QHelper.master().connect( self.cancel, QtCore.SIGNAL( 'clicked()' ), QHelper.master().Action.reportCancelCallback )
 		self.cancel.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'reportCancel' ) ) )
 		grid.addWidget( self.cancel, 6, 1 )
 		
