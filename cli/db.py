@@ -4,14 +4,22 @@ import shelve, time, os
 from helper import QHelper
 
 class DBBase:
-	path = os.path.join( 'data', '' )
+	filepath = [ 'data' ]
+	filename = ''
+	fileext = ''
+	
+	@classmethod
+	def path( cls ):
+		path = os.path.join( *cls.filepath )
+		path = os.path.join( path, '.'.join( [ cls.filename, cls.fileext ] ) )
+		return path
 	
 	@classmethod
 	def handle( cls ):
 		if not hasattr( cls, '__handle' ):
 			for i in range( 10 ):
 				try:
-					cls.__handle = shelve.open( cls.path )
+					cls.__handle = shelve.open( cls.path() )
 					break
 				except Exception as e:
 					print '::DB EXCEPTION', e
@@ -19,10 +27,15 @@ class DBBase:
 	
 	@classmethod
 	def sync( cls ):
-		if hasattr( cls, '__handle' ):
-			cls.__handle.sync()
-			cls.__handle.close()
-			delattr( cls, '__handle' )
+		for i in range( 10 ):
+			try:
+				if hasattr( cls, '__handle' ):
+					cls.__handle.sync()
+					cls.__handle.close()
+					delattr( cls, '__handle' )
+				break
+			except Exception as e:
+				print '::DB EXCEPTION', e
 	
 	@classmethod
 	def keys( cls ):
@@ -48,12 +61,16 @@ class DBBase:
 
 
 class DBConf( DBBase ):
-	path = os.path.join( 'data', 'conf.db' )
+	filepath = [ 'data' ]
+	filename = 'conf'
+	fileext = 'db'
 
 
 
 class DBJob( DBBase ):
-	path = os.path.join( 'data', 'job.db' )
+	filepath = [ 'data' ]
+	filename = 'job'
+	fileext = 'temp'
 	
 	@classmethod
 	def get( cls ):
@@ -81,7 +98,9 @@ class DBJob( DBBase ):
 
 
 class DBCron( DBBase ):
-	path = os.path.join( 'data', 'cron.db' )
+	filepath = [ 'data' ]
+	filename = 'cron'
+	fileext = 'temp'
 	
 	@classmethod
 	def get( cls ):
@@ -110,7 +129,9 @@ class DBCron( DBBase ):
 
 
 class DBSchedule( DBBase ):
-	path = os.path.join( 'data', 'schedule.db' )
+	filepath = [ 'data' ]
+	filename = 'schedule'
+	fileext = 'temp'
 	
 	@classmethod
 	def get( cls ):
@@ -138,16 +159,17 @@ class DBSchedule( DBBase ):
 
 
 class DBHistory( DBBase ):
-	basepath = os.path.join( 'data', 'history' )
-	path = os.path.join( 'data', 'history', '' )
+	filepath = [ 'data', 'history' ]
+	filename = ''
+	fileext = 'history'
 	
 	@classmethod
 	def setPath( cls, sender, recipient ):
 		filename = [ sender, recipient ]
 		filename.sort()
-		filename = '_'.join( filename ) + '.db'
+		filename = '_'.join( filename )
 		cls.sync()
-		cls.path = os.path.join( cls.basepath, filename )
+		cls.filename = os.path.join( filename )
 	
 	@classmethod
 	def set( cls, sender, recipient, message, ts=None ):

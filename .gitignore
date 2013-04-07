@@ -33,3 +33,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Runtime DB files and history
+*.temp
+
+# Chat history files
+*.history
