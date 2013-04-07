@@ -67,6 +67,13 @@ class DBConf( DBBase ):
 
 
 
+class DBAccount( DBBase ):
+	filepath = [ 'data' ]
+	filename = 'account'
+	fileext = 'db'
+
+
+
 class DBJob( DBBase ):
 	filepath = [ 'data' ]
 	filename = 'job'

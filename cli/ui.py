@@ -4,7 +4,7 @@ import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
 from async import ListenerThread, ExecutionThread
-from db import DBConf, DBJob, DBCron, DBSchedule
+from db import DBConf, DBJob, DBCron, DBSchedule, DBAccount
 from helper import QHelper
 
 
@@ -577,8 +577,16 @@ class QContactList( QtGui.QGroupBox ):
 		self.setLayout( self.layout )
 		self.contact = None
 		#self.master.View.contactItem( contact, status )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'receiveMessage' ), self.receiveMessageCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
+	
+	def receiveMessageCallback( self, contact, message ):
+		print '::CONNECT:QContact:receiveMessage', contact, message
+		if not contact in self.radioList.keys():
+			self.radioList[contact] = QContact( contact, '?', self )
+			self.layout.addWidget( self.radioList[contact] )
+			self.radioList[contact].receiveFrom( message, str( time.time() ) )
 	
 	def contactStatusCallback( self, contact, status ):
 		print '::CONNECT:QContactList:contactStatus', contact, status
@@ -590,13 +598,6 @@ class QContactList( QtGui.QGroupBox ):
 	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContactList:pickedContact', contact
 		self.contact = contact
-	
-	"""
-	def value( self ):
-		for k, w in self.radioList.items():
-			if w.isChecked():
-				return k
-	"""
 
 
 
@@ -610,6 +611,7 @@ class QContact( QtGui.QFrame ):
 		self.messagesNew = {}
 		self.status = status
 		self.selected = False
+		self.added = False
 		self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
 		self.buttons = QtGui.QWidget( self )
 		
@@ -618,13 +620,19 @@ class QContact( QtGui.QFrame ):
 		self.statusLabel.setStyleSheet( 'QLabel { color:#999; }' )
 		self.messagesLabel = QtGui.QLabel( '' )
 		self.messagesLabel.setStyleSheet( 'QLabel { color:#000; font-weight:bold; }' )
-		self.buttons.pushButton1 = QtGui.QPushButton( '1' )
-		self.buttons.pushButton2 = QtGui.QPushButton( '2' )
+		
+		self.buttons.chatButton = QtGui.QPushButton( 'chat' )
+		self.buttons.chatButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
+		self.buttons.addButton = QtGui.QPushButton( 'Add to List' )
+		self.buttons.addButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'addContact' ), self.name, 'general' ) )
+		self.buttons.removeButton = QtGui.QPushButton( 'Remove from List' )
+		self.buttons.removeButton.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'removeContact' ), self.name ) )
 		
 		layout = QtGui.QHBoxLayout( self.buttons )
 		layout.addStretch( 1 )
-		layout.addWidget( self.buttons.pushButton1 )
-		layout.addWidget( self.buttons.pushButton2 )
+		layout.addWidget( self.buttons.chatButton )
+		layout.addWidget( self.buttons.addButton )
+		layout.addWidget( self.buttons.removeButton )
 		
 		grid = QtGui.QGridLayout( self )
 		grid.addWidget( self.nameLabel, 0, 0 )
@@ -638,6 +646,8 @@ class QContact( QtGui.QFrame ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'clickedContact' ), self.clickedContactCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'addContact' ), self.addContactCallback )
+		self.connect( QHelper.master(), QtCore.SIGNAL( 'removeContact' ), self.removeContactCallback )
 		#self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name ) )
 		self.update()
 	
@@ -655,6 +665,24 @@ class QContact( QtGui.QFrame ):
 		else:
 			self.buttons.hide()
 			self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
+	
+	def addContactCallback( self, contact, group ):
+		print '::CONNECT:QContact:addContact', contact
+		if self.name == contact:
+			contacts = DBAccount.get( 'contacts', None )
+			if contacts:
+				DBAccount['contacts'][self.name] = { 'group':group }
+			else:
+				DBAccount['contacts'] = { self.name: { 'group':'general' } }
+			self.update()
+	
+	def removeContactCallback( self, contact ):
+		print '::CONNECT:QContact:removeContact', contact
+		if self.name == contact:
+			if DBAccount.get( 'contacts', None ):
+				if self.name in DBAccount['contacts'].keys():
+					del DBAccount['contacts'][self.name]
+			self.update()
 	
 	def pickedContactCallback( self, contact ):
 		print '::CONNECT:QContact:pickedContact', contact
@@ -683,6 +711,17 @@ class QContact( QtGui.QFrame ):
 	def update( self ):
 		if self.selected:
 			self.messagesNew = {}
+		
+		self.added = self.name in DBAccount.get( 'contacts', {} ).keys()
+		if self.added:
+			self.buttons.addButton.show()
+			self.buttons.removeButton.hide()
+			self.nameLabel.setStyleSheet( 'QLabel { color:#333; }' )
+		else:
+			self.buttons.addButton.show()
+			self.buttons.removeButton.hide()
+			self.nameLabel.setStyleSheet( 'QLabel { color:#999; }' )
+		
 		self.statusLabel.setText( self.status )
 		if self.status == 'online':
 			self.statusLabel.setStyleSheet( 'QLabel { color:green; }' )
@@ -690,6 +729,7 @@ class QContact( QtGui.QFrame ):
 			self.statusLabel.setStyleSheet( 'QLabel { color:gray; }' )
 		else:
 			self.statusLabel.setStyleSheet( 'QLabel { color:yellow; }' )
+		
 		self.messagesLabel.setText( ( len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or '' ) )
 	
 	def receiveFrom( self, message, ts=None ):
