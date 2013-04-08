@@ -4,8 +4,9 @@ from PyQt4 import QtCore
 from random import randint
 import time
 
-from wrap import Wrap
-from db import DBConf, DBJob, DBCron, DBSchedule
+from helper import QHelper
+from transport import Transport
+from db import DBConf, DBJob, DBCron, DBSchedule, DBHistory
 
 class ListenerThread( QtCore.QThread ):
 	def __init__( self, master ):
@@ -33,6 +34,8 @@ class ListenerThread( QtCore.QThread ):
 
 
 class ExecutionThread( QtCore.QThread ):
+	messageCallbackHandler = None
+	
 	def __init__( self, master ):
 		QtCore.QThread.__init__( self )
 		self.master = master
@@ -50,29 +53,78 @@ class ExecutionThread( QtCore.QThread ):
 			#self.emit( QtCore.SIGNAL( 'executionSignal()' ) )
 	
 	def connectActionTrigger( self, username, passwd ):
-		Wrap.connect( username, passwd )
+		#Wrap.connect( username, passwd )
+		Transport.username = username
+		Transport.passwd = passwd
+		Transport.listener = self
+		res = Transport.execute( '_connect' )
+		if res:
+			DBSchedule.set( 'loginSuccess', None )
+		else:
+			DBSchedule.set( 'loginError', None, 'Bad login' )
 	
 	def helloActionTrigger( self ):
-		Wrap.hello()
+		#Wrap.hello()
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'online' )
 	
 	def reportActionTrigger( self, **kwarg ):
-		Wrap.report( **kwarg )
+		#Wrap.report( **kwarg )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
+			QHelper.str( kwarg.get( 'h', 0 ) ),
+			QHelper.str( kwarg.get( 'm', 0 ) ),
+			QHelper.str( kwarg.get( 'project', '' ) ),
+			QHelper.str( kwarg.get( 'summary', '' ) ),
+		) )
 	
 	def sendMessageActionTrigger( self, recipient, message ):
-		Wrap.send( recipient, message )
+		#Wrap.send( recipient, message )
+		DBHistory.set( DBConf.get( 'username' ), recipient, message )
+		Transport.execute( 'sendMessage', QHelper.str( recipient ), QHelper.str( message ) )
 	
 	def projectListActionTrigger( self ):
-		Wrap.showProjectsHook()
+		#Wrap.showProjectsHook()
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'project list' )
+		self.__class__.messageCallbackHandler = self._projectListActionTrigger
+	
+	@classmethod
+	def _projectListActionTrigger( cls, sender, message ):
+		projectList = [line.split( ': ', 1) for line in message.split('\n') if len(line.split( ': ', 1))==2]
+		DBSchedule.set( 'projectList', None, projectList )
 	
 	def projectDataActionTrigger( self, project ):
-		Wrap.pickProjectHook( project )
+		#Wrap.pickProjectHook( project )
+		Transport.execute( 'sendMessage', DBConf.get( 'bot' ), 'project define ' + project )
+		self.__class__.messageCallbackHandler = self._projectDataActionTrigger
 	
-	def contactsActionTrigger( self ):
-		Wrap.showContactsHook()
+	@classmethod
+	def _projectDataActionTrigger( cls, sender, message ):
+		projectInfo = message
+		message = QHelper.str( message ).split( ':', 1 )[1].strip()
+		DBSchedule.set( 'projectData', None, message )
 	
 	def respond( self ):
 		for ts, task in DBJob.get():
 			getattr( self.master.Action, task['callback'] )( *task['arg'], **task['kwarg'] )
+	
+	##########################################################################
+	
+	@classmethod
+	def messageCallbackHook( cls, sender, message ):
+		if cls.messageCallbackHandler is not None:
+			cls.messageCallbackHandler( sender, message )
+			cls.messageCallbackHandler = None
+			return
+		if message:
+			DBHistory.set( sender, DBConf.get( 'username' ), message )
+			DBSchedule.set( 'receiveMessage', None, sender, message )
+	
+	@classmethod
+	def presenceCallbackHook( cls, contact, status ):
+		DBSchedule.set( 'contactStatus', None, contact, status )
+	
+	@classmethod
+	def errorCallbackHook( cls, e ):
+		DBSchedule.set( 'errorActionTrigger', None, str( e ) )
 
 
 
