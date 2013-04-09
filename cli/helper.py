@@ -36,4 +36,5 @@ class QHelper:
 	
 	@classmethod
 	def log( cls, *args ):
-		print '--HELPER', args
+		#print '--HELPER', args
+		return

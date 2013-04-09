@@ -37,8 +37,8 @@ class Transport:
 	def _connect( cls ):
 		print '::TRANSPORT-CONNECT', cls.username, cls.passwd
 		"""Set up a connection to xmpp server. Authenticate"""
-		cls._client = xmpp.Client( DBConf.get( 'server' ) )
-		#cls._client = xmpp.Client( DBConf.get( 'server' ), debug=[] )
+		#cls._client = xmpp.Client( DBConf.get( 'server' ) )
+		cls._client = xmpp.Client( DBConf.get( 'server' ), debug=[] )
 		cls._client.connect( server=( DBConf.get( 'server' ), DBConf.get( 'port' ) ) )
 		cls._status = cls._client.auth( cls.username, cls.passwd, DBConf.get( 'nickname' ) ) and True
 		if cls._status is None:

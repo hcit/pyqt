@@ -825,7 +825,7 @@ class QPreferencesView( QForm ):
 		
 		self.submit = QtGui.QPushButton( 'Save', self )
 		self.submit.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesSubmit' ) ) )
-			
+		
 		self.cancel = QtGui.QPushButton( 'Cancel', self )
 		self.cancel.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'preferencesCancel' ) ) )
 		

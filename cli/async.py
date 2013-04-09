@@ -17,6 +17,9 @@ class ListenerThread( QtCore.QThread ):
 	
 	def build( self ):
 		self.master.connect( self, QtCore.SIGNAL( 'listenerSignal()' ), self.respond )
+		# use the listener with do method to respond:
+		#  QHelper.master().emit( QtCCore.SIGNAL( 'job' ), arg1, arg2 )
+		self.connect( self.master, QtCore.SIGNAL( 'jobSignal()' ), self.do )
 		self.start()
 	
 	def run( self ):
@@ -30,6 +33,9 @@ class ListenerThread( QtCore.QThread ):
 		for ts, task in DBSchedule.get():
 			print '::ASYNC:emit', task['callback']
 			self.master.emit( QtCore.SIGNAL( task['callback'] ), *task['arg'] )
+	
+	def do( self, *arg ):
+		print '::ASYNC:DO', arg
 
 
 
