@@ -33,3 +33,7 @@ class QHelper:
 		else:
 			string = str( string )
 		return string
+	
+	@classmethod
+	def log( cls, *args ):
+		print '--HELPER', args

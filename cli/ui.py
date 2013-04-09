@@ -102,16 +102,16 @@ class Action:
 		self.master.View.login().show()
 	
 	def SIGNALCBloginSubmitCallback( self, username, passwd ):
-		print '::CONNECT:master:loginSubmit', username, passwd
+		QHelper.log( '::CONNECT:master:loginSubmit', username, passwd )
 	
 	def SIGNALCBloginCancelCallback( self ):
-		print '::CONNECT:master:loginCancel'
+		QHelper.log( '::CONNECT:master:loginCancel' )
 	
 	def SIGNALCBloginErrorCallback( self, e ):
-		print '::CONNECT:master:loginError', e
+		QHelper.log( '::CONNECT:master:loginError', e )
 	
 	def SIGNALCBloginSuccessCallback( self ):
-		print '::CONNECT:master:loginSuccess'
+		QHelper.log( '::CONNECT:master:loginSuccess' )
 		self.master.show()
 		self.master.View.contact().show()
 		self.master.View.chat().hide()
@@ -121,52 +121,47 @@ class Action:
 		self.master.View.preferences().show()
 	
 	def SIGNALCBpreferencesSubmitCallback( self ):
-		print '::CONNECT:master:preferencesSubmit'
+		QHelper.log( '::CONNECT:master:preferencesSubmit' )
 	
 	def SIGNALCBpreferencesCancelCallback( self ):
-		print '::CONNECT:master:preferencesCancel'
+		QHelper.log( '::CONNECT:master:preferencesCancel' )
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
 		DBJob.set( 'projectListActionTrigger' )
 	
 	def SIGNALCBreportSubmitCallback( self ):
-		print '::CONNECT:master:reportSubmit'
+		QHelper.log( '::CONNECT:master:reportSubmit' )
 	
 	def SIGNALCBreportCancelCallback( self ):
-		print '::CONNECT:master:reportCancel'
-	
-	"""
-	def reportActionTrigger( self ):
-		pass
-	"""
+		QHelper.log( '::CONNECT:master:reportCancel' )
 	
 	def SIGNALCBcontactStatusCallback( self, contact, status ):
-		print '::CONNECT:master:contactStatus', contact, status
+		QHelper.log( '::CONNECT:master:contactStatus', contact, status )
 	
 	def SIGNALCBpickedContactCallback( self, contact ):
-		print '::CONNECT:master:pickedContact', contact
+		QHelper.log( '::CONNECT:master:pickedContact', contact )
 		self.master.View.chat().show()
 	
 	def SIGNALCBsendMessageCallback( self, contact, message ):
-		print '::CONNECT:master:sendMessage', contact, message
+		QHelper.log( '::CONNECT:master:sendMessage', contact, message )
 		DBJob.set( 'sendMessageActionTrigger', None, contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
 	def SIGNALCBreceiveMessageCallback( self, contact, message ):
-		print '::CONNECT:master:receiveMessage', contact, message
+		QHelper.log( '::CONNECT:master:receiveMessage', contact, message )
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
 		DBJob.set( 'projectListActionTrigger' )
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
-		print '::CONNECT:master:projectList', projectList
+		QHelper.log( '::CONNECT:master:projectList', projectList )
 	
 	def SIGNALCBprojectDataCallback( self, projectData ):
-		print '::CONNECT:master:projectData', projectData
+		QHelper.log( '::CONNECT:master:projectData', projectData )
 	
 	def SIGNALCBpickedProjectCallback( self, project ):
-		print '::CONNECT:master:pickedProject', project
+		QHelper.log( '::CONNECT:master:pickedProject', project )
 		DBJob.set( 'projectDataActionTrigger', None, project )
 
 
@@ -313,21 +308,21 @@ class QContactList( QtGui.QGroupBox ):
 			self.layout.addWidget( self.radioList[row['name']] )
 	
 	def receiveMessageCallback( self, contact, message ):
-		print '::CONNECT:QContact:receiveMessage', contact, message
+		QHelper.log( '::CONNECT:QContact:receiveMessage', contact, message )
 		if not contact in self.radioList.keys():
 			self.radioList[contact] = QContact( contact, '?', self )
 			self.layout.addWidget( self.radioList[contact] )
 			self.radioList[contact].receiveFrom( message, str( time.time() ) )
 	
 	def contactStatusCallback( self, contact, status ):
-		print '::CONNECT:QContactList:contactStatus', contact, status
+		QHelper.log( '::CONNECT:QContactList:contactStatus', contact, status )
 		if not contact in self.radioList.keys():
 			self.radioList[contact] = QContact( contact, status, self )
 			self.layout.addWidget( self.radioList[contact] )
 			#self.layout.setAlignment( self.radioList[contact], QtCore.Qt.AlignTop )
 	
 	def pickedContactCallback( self, contact ):
-		print '::CONNECT:QContactList:pickedContact', contact
+		QHelper.log( '::CONNECT:QContactList:pickedContact', contact )
 		self.contact = contact
 
 
@@ -389,7 +384,7 @@ class QContact( QtGui.QFrame ):
 		QHelper.master().emit( QtCore.SIGNAL( 'pickedContact' ), self.name )
 	
 	def clickedContactCallback( self, contact ):
-		print '::CONNECT:QContact:clickedContact', contact
+		QHelper.log( '::CONNECT:QContact:clickedContact', contact )
 		if self.name == contact:
 			self.setStyleSheet( 'QWidget#QContact { background:#fff; color:#333; }' )
 			self.buttons.show()
@@ -398,7 +393,7 @@ class QContact( QtGui.QFrame ):
 			self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
 	
 	def addContactCallback( self, contact, group ):
-		print '::CONNECT:QContact:addContact', contact
+		QHelper.log( '::CONNECT:QContact:addContact', contact )
 		if self.name == contact:
 			self.group = group
 			group_id = DB.execute( "SELECT `id` FROM `contact_group` WHERE `name`=?", self.group )[0]['id']
@@ -407,13 +402,13 @@ class QContact( QtGui.QFrame ):
 			self.update()
 	
 	def removeContactCallback( self, contact ):
-		print '::CONNECT:QContact:removeContact', contact
+		QHelper.log( '::CONNECT:QContact:removeContact', contact )
 		if self.name == contact:
 			DB.execute( "DELETE FROM `contact` WHERE `name`=?", self.name )
 			self.update()
 	
 	def pickedContactCallback( self, contact ):
-		print '::CONNECT:QContact:pickedContact', contact
+		QHelper.log( '::CONNECT:QContact:pickedContact', contact )
 		if self.name == contact:
 			self.selected = True
 			self.update()
@@ -421,17 +416,17 @@ class QContact( QtGui.QFrame ):
 			pass
 	
 	def sendMessageCallback( self, contact, message ):
-		print '::CONNECT:QContact:sendMessage', contact, message
+		QHelper.log( '::CONNECT:QContact:sendMessage', contact, message )
 		if self.name == contact:
 			self.sendTo( message )
 	
 	def receiveMessageCallback( self, contact, message ):
-		print '::CONNECT:QContact:receiveMessage', contact, message
+		QHelper.log( '::CONNECT:QContact:receiveMessage', contact, message )
 		if self.name == contact:
 			self.receiveFrom( message, str( time.time() ) )
 	
 	def contactStatusCallback( self, contact, status ):
-		print '::CONNECT:QContact:contactStatus', contact, status
+		QHelper.log( '::CONNECT:QContact:contactStatus', contact, status )
 		if self.name == contact:
 			self.status = status
 			self.update()
@@ -445,7 +440,7 @@ class QContact( QtGui.QFrame ):
 			self.group = DB.execute( "SELECT `name` FROM `contact_group` WHERE `id`=?", group_id )[0]['name']
 		else:
 			self.group = None
-		print '::CONTACT::GROUP', self.group
+		QHelper.log( '::CONTACT::GROUP', self.group )
 		if self.group:
 			self.buttons.addButton.hide()
 			self.buttons.removeButton.show()
@@ -517,7 +512,7 @@ class QChatDialog( QtGui.QTextEdit ):
 		self.textCursor.insertHtml( text + '<br />' )
 	
 	def pickedContactCallback( self, contact ):
-		print '::CONNECT:QChatDialog:pickedContact', contact
+		QHelper.log( '::CONNECT:QChatDialog:pickedContact', contact )
 		self.parent.setWindowTitle( contact + ' - ' + DBConf.get( 'appname' ) )
 		self.contact = contact
 		self.clear()
@@ -527,7 +522,7 @@ class QChatDialog( QtGui.QTextEdit ):
 			self.message( message['ts'], message['sender'], message['message'] )
 	
 	def sendMessageCallback( self, contact, message ):
-		print '::CONNECT:QChatDialog:sendMessage', contact, message
+		QHelper.log( '::CONNECT:QChatDialog:sendMessage', contact, message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
 		self.messagesList[contact][str( ts )] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':contact, 'message':message }
@@ -535,7 +530,7 @@ class QChatDialog( QtGui.QTextEdit ):
 		self.message( str( ts ), DBConf.get( 'username' ), message )
 	
 	def receiveMessageCallback( self, contact, message ):
-		print '::CONNECT:QChatDialog:receiveMessage', contact, message
+		QHelper.log( '::CONNECT:QChatDialog:receiveMessage', contact, message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
 		self.messagesList[contact][str( ts )] = { 'ts':str( ts ), 'sender':contact, 'recipient':DBConf.get( 'username' ), 'message':message }
@@ -568,12 +563,12 @@ class QChatInput( QtGui.QTextEdit ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'sendMessage' ), self.sendMessageCallback )
 	
 	def pickedContactCallback( self, contact ):
-		print '::CONNECT:QChatInput:pickedContact', contact
+		QHelper.log( '::CONNECT:QChatInput:pickedContact', contact )
 		self.contact = contact
 		self.clear()
 	
 	def sendMessageCallback( self, contact, message ):
-		print '::CONNECT:QChatInput:sendMessage', contact, message
+		QHelper.log( '::CONNECT:QChatInput:sendMessage', contact, message )
 		self.clear()
 	
 	def keyPressEvent( self, event ):
@@ -628,20 +623,20 @@ class QProjectList( QtGui.QGroupBox ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectData' ), self.projectDataCallback )
 	
 	def projectListCallback( self, projectList ):
-		print '::CONNECT:QProjectList:projectList', projectList
+		QHelper.log( '::CONNECT:QProjectList:projectList', projectList )
 		for project, title in projectList:
 			if not project in self.radioList.keys():
 				self.radioList[project] = QProject( project, title, self )
 				self.layout.addWidget( self.radioList[project] )
 	
 	def pickedProjectCallback( self, project ):
-		print '::CONNECT:QProjectList:pickedProject', project
+		QHelper.log( '::CONNECT:QProjectList:pickedProject', project )
 		self.project = project
 		#self.parent.setWindowTitle( project + ' - ' + DBConf.get( 'appname' ) )
 		#self.clear()
 	
 	def projectDataCallback( self, projectData ):
-		print '::CONNECT:QProjectList:projectData', projectData
+		QHelper.log( '::CONNECT:QProjectList:projectData', projectData )
 	
 	def value( self ):
 		for k, w in self.radioList.items():
@@ -662,13 +657,13 @@ class QProject( QtGui.QRadioButton ):
 		self.clicked.connect( lambda: QHelper.master().emit( QtCore.SIGNAL( 'pickedProject' ), self.name ) )
 	
 	def projectListCallback( self, projectList ):
-		print '::CONNECT:QProject:projectList', projectList
+		QHelper.log( '::CONNECT:QProject:projectList', projectList )
 	
 	def pickedProjectCallback( self, project ):
-		print '::CONNECT:QProject:pickedProject', project
+		QHelper.log( '::CONNECT:QProject:pickedProject', project )
 	
 	def projectDataCallback( self, projectData ):
-		print '::CONNECT:QProject:projectData', projectData
+		QHelper.log( '::CONNECT:QProject:projectData', projectData )
 	
 	def update( self ):
 		if self.isChecked():
@@ -690,13 +685,13 @@ class QProjectData( QtGui.QTextEdit ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'projectData' ), self.projectDataCallback )
 	
 	def pickedProjectCallback( self, project ):
-		print '::CONNECT:QProjectData:pickedProject', project
+		QHelper.log( '::CONNECT:QProjectData:pickedProject', project )
 		self.project = project
 		self.clear()
 		self.write( '...loading' )
 	
 	def projectDataCallback( self, projectData ):
-		print '::CONNECT:QProjectData:projectData', projectData
+		QHelper.log( '::CONNECT:QProjectData:projectData', projectData )
 		self.clear()
 		data = '<table width="100%" cellspacing="4" cellpadding="0">'
 		n=0
@@ -779,34 +774,34 @@ class QLoginView( QForm ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesCancel' ), self.preferencesCancelCallback )
 	
 	def loginSubmitCallback( self, username, passwd ):
-		print  '::CONNECT:QLoginView:loginSubmit', username, passwd
+		QHelper.log( '::CONNECT:QLoginView:loginSubmit', username, passwd )
 		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
 		DBJob.set( 'connectActionTrigger', None, username, passwd )
 	
 	def loginSuccessCallback( self ):
-		print  '::CONNECT:QLoginView:loginSuccess'
+		QHelper.log( '::CONNECT:QLoginView:loginSuccess' )
 		DBConf.set( 'username', QHelper.getValue( self.fields['username'] ) )
 		DBConf.set( 'passwd', QHelper.getValue( self.fields['passwd'] ) )
 		self.hide()
 		self.status.setText( '' )
 	
 	def loginErrorCallback( self, e ):
-		print  '::CONNECT:QLoginView:loginError', e
+		QHelper.log( '::CONNECT:QLoginView:loginError', e )
 		self.status.setText( str( e ) )
 		self.status.setStyleSheet( 'QLabel { color : red; }' )
 	
 	def loginCancelCallback( self ):
-		print  '::CONNECT:QLoginView:loginCancel'
+		QHelper.log( '::CONNECT:QLoginView:loginCancel' )
 		QtGui.qApp.quit()
 	
 	def preferencesSubmitCallback( self ):
-		print  '::CONNECT:QLoginView:preferencesSubmit'
+		QHelper.log( '::CONNECT:QLoginView:preferencesSubmit' )
 		if not QHelper.master().isVisible() and not self.isVisible():
 			self.show()
 	
 	def preferencesCancelCallback( self ):
-		print  '::CONNECT:QLoginView:preferencesCancel'
+		QHelper.log( '::CONNECT:QLoginView:preferencesCancel' )
 		if not QHelper.master().isVisible() and not self.isVisible():
 			self.show()
 
@@ -850,13 +845,13 @@ class QPreferencesView( QForm ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'preferencesCancel' ), self.preferencesCancelCallback )
 	
 	def preferencesSubmitCallback( self ):
-		print  '::CONNECT:QPreferencesView:preferencesSubmit'
+		QHelper.log( '::CONNECT:QPreferencesView:preferencesSubmit' )
 		for k, v in self.values().items():
 			DBConf.set( k, type( DBConf.get( k ) )( v ) )
 		self.hide()
 	
 	def preferencesCancelCallback( self ):
-		print  '::CONNECT:QPreferencesView:preferencesCancel'
+		QHelper.log( '::CONNECT:QPreferencesView:preferencesCancel' )
 		self.hide()
 
 
@@ -897,17 +892,17 @@ class QReportView( QForm ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'reportCancel' ), self.reportCancelCallback )
 	
 	def reportSubmitCallback( self ):
-		print  '::CONNECT:QReportView:reportSubmit'
+		QHelper.log( '::CONNECT:QReportView:reportSubmit' )
 		data = self.values()
 		DBJob.set( 'reportActionTrigger', **data )
 		self.hide()
 	
 	def reportCancelCallback( self ):
-		print  '::CONNECT:QReportView:reportCancel'
+		QHelper.log( '::CONNECT:QReportView:reportCancel' )
 		self.hide()
 	
 	def projectListCallback( self, projectList ):
-		print  '::CONNECT:QReportView:projectList', projectList
+		QHelper.log( '::CONNECT:QReportView:projectList', projectList )
 		for project, title in projectList:
 			self.fields['project'].addItem( project )
 
