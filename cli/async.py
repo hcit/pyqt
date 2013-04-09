@@ -6,7 +6,7 @@ import time
 
 from helper import QHelper
 from transport import Transport
-from db import DBConf, DBJob, DBCron, DBSchedule, DBHistory
+from dbs import DBConf, DBJob, DBCron, DBSchedule, DBHistory
 
 class ListenerThread( QtCore.QThread ):
 	def __init__( self, master ):

@@ -4,7 +4,7 @@ import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
 from async import ListenerThread, ExecutionThread
-from db import DBConf, DBJob, DBCron, DBSchedule, DB
+from dbs import DBConf, DBJob, DBCron, DBSchedule, DB
 from helper import QHelper
 
 

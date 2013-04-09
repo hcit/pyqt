@@ -2,7 +2,7 @@
 # -*-coding: utf-8 -*-
 
 from transport import Transport
-from db import DBConf, DBSchedule, DBHistory
+from dbs import DBConf, DBSchedule, DBHistory
 from helper import QHelper
 
 

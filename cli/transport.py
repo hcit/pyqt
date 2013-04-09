@@ -2,7 +2,7 @@
 # -*-coding: utf-8 -*-
 
 import xmpp, time
-from db import DBConf
+from dbs import DBConf
 
 class Transport:
 	_client = None
