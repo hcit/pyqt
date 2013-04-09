@@ -22,7 +22,11 @@ class Transport:
 				print '::TRANSPORT EXCEPTION', e
 	
 	@classmethod
-	def messageCallback( cls, sender, text ):
+	def sendMessageCallback( cls, recipient, message ):
+		return True
+	
+	@classmethod
+	def getMessageCallback( cls, sender, message ):
 		return True
 	
 	@classmethod
@@ -30,11 +34,23 @@ class Transport:
 		return True
 	
 	@classmethod
-	def errorCallback( cls, e ):
+	def serverErrorCallback( cls, e ):
 		return True
 	
 	@classmethod
-	def _connect( cls ):
+	def connectSuccessCallback( cls ):
+		return True
+	
+	@classmethod
+	def connectErrorCallback( cls ):
+		return True
+	
+	@classmethod
+	def _connect( cls, username=None, passwd=None ):
+		if username:
+			cls.username = username
+		if passwd:
+			cls.passwd = passwd
 		print '::TRANSPORT-CONNECT', cls.username, cls.passwd
 		"""Set up a connection to xmpp server. Authenticate"""
 		#cls._client = xmpp.Client( DBConf.get( 'server' ) )
@@ -43,6 +59,11 @@ class Transport:
 		cls._status = cls._client.auth( cls.username, cls.passwd, DBConf.get( 'nickname' ) ) and True
 		if cls._status is None:
 			cls._client = None
+			
+			if cls.listener and hasattr( cls.listener, 'connectErrorCallbackHook' ):
+				cls.listener.connectErrorCallbackHook()
+			cls.connectErrorCallback()
+			
 			return None
 		cls._client.RegisterHandler( 'message', cls.getMessage )
 		cls._client.sendInitPresence(requestRoster=1)
@@ -50,6 +71,11 @@ class Transport:
 		cls._get_roster()
 		#cls.sendMessage( DBConf.get( 'username' ), 'online' )
 		cls._client.RegisterHandler( 'presence', cls.getPresence )
+		
+		if cls.listener and hasattr( cls.listener, 'connectSuccessCallbackHook' ):
+			cls.listener.connectSuccessCallbackHook()
+		cls.connectSuccessCallback()
+		
 		return True
 	
 	@classmethod
@@ -59,39 +85,42 @@ class Transport:
 		return cls._client
 	
 	@classmethod
-	def sendMessage( cls, to, messageText, messageType='chat' ):
-		message = xmpp.Message( to + '@' + DBConf.get( 'server' ), messageText )
+	def serverError( cls, e ):
+		if cls.listener and hasattr( cls.listener, 'serverErrorCallbackHook' ):
+			cls.listener.serverErrorCallbackHook( e )
+		cls.serverErrorCallback( e )
+	
+	@classmethod
+	def sendMessage( cls, recipient, messageText, messageType='chat' ):
+		message = xmpp.Message( recipient + '@' + DBConf.get( 'server' ), messageText )
 		message.setAttr( 'type', messageType )
 		cls._get_client().send( message )
+		if cls.listener and hasattr( cls.listener, 'sendMessageCallbackHook' ):
+			cls.listener.sendMessageCallbackHook( recipient, messageText )
+		cls.sendMessageCallback( recipient, messageText )
 	
 	@classmethod
 	def getMessage( cls, session, message ):
 		#sender = message.getFrom().getResource()
 		sender = str( message.getFrom() ).split('@')[0]
 		messageText = message.getBody()
-		if cls.listener and hasattr( cls.listener, 'messageCallbackHook' ):
-			cls.listener.messageCallbackHook( sender, messageText )
-		cls.messageCallback( sender, messageText )
+		if cls.listener and hasattr( cls.listener, 'getMessageCallbackHook' ):
+			cls.listener.getMessageCallbackHook( sender, messageText )
+		cls.getMessageCallback( sender, messageText )
 	
 	@classmethod
 	def getPresence( cls, session, presence ):
-		sender = str( presence.getFrom() ).split('@')[0]
+		contact = str( presence.getFrom() ).split('@')[0]
 		status = presence.getStatus() or 'online'
-		cls._contactList[sender] = status
+		cls._contactList[contact] = status
 		if cls.listener and hasattr( cls.listener, 'presenceCallbackHook' ):
-			cls.listener.presenceCallbackHook( sender, status )
-		cls.presenceCallback( sender, status )
+			cls.listener.presenceCallbackHook( contact, status )
+		cls.presenceCallback( contact, status )
 	
 	@classmethod
 	def getContactList( cls ):
 		cls._get_roster()
 		return cls._contactList
-	
-	@classmethod
-	def connectionError( cls, e ):
-		if cls.listener and hasattr( cls.listener, 'errorCallbackHook' ):
-			cls.listener.errorCallbackHook( e )
-		cls.errorCallback( e )
 	
 	@classmethod
 	def _get_roster( cls ):
@@ -115,4 +144,4 @@ class Transport:
 			try:
 				cls._get_client().Process( arg )
 			except ValueError as e:
-				cls.connectionError( e )
+				cls.serverError( e )

@@ -67,97 +67,6 @@ class DBConf( DBBase ):
 
 
 
-class DBJob( DBBase ):
-	filepath = [ 'data' ]
-	filename = 'job'
-	fileext = 'temp'
-	
-	@classmethod
-	def get( cls ):
-		taskList = []
-		keys = cls.keys()
-		keys.sort()
-		for ts in keys:
-			task = cls.handle()[ts]
-			del cls.handle()[ts]
-			taskList.append( ( ts, task ) )
-		cls.sync()
-		return taskList
-	
-	@classmethod
-	def set( cls, callback, ts=None, *arg, **kwarg ):
-		if not ts:
-			ts = time.time()
-		cls.handle()[str( ts )] = {
-			'callback':callback,
-			'arg':arg,
-			'kwarg':kwarg
-		}
-		cls.sync()
-
-
-
-class DBCron( DBBase ):
-	filepath = [ 'data' ]
-	filename = 'cron'
-	fileext = 'temp'
-	
-	@classmethod
-	def get( cls ):
-		taskList = []
-		keys = cls.keys()
-		keys.sort()
-		for ts in keys:
-			task = cls.handle()[ts]
-			if float( ts ) < time.time():
-				del cls.handle()[ts]
-				cls.handle()[str( time.time() + task['period'] )] = task
-				taskList.append( ( ts, task ) )
-		cls.sync()
-		return taskList
-	
-	@classmethod
-	def set( cls, callback, period, *arg, **kwarg ):
-		cls.handle()[str( time.time() )] = {
-			'period':period,
-			'callback':callback,
-			'arg':arg,
-			'kwarg':kwarg
-		}
-		cls.sync()
-
-
-
-class DBSchedule( DBBase ):
-	filepath = [ 'data' ]
-	filename = 'schedule'
-	fileext = 'temp'
-	
-	@classmethod
-	def get( cls ):
-		taskList = []
-		keys = cls.keys()
-		keys.sort()
-		for ts in keys:
-			task = cls.handle()[ts]
-			del cls.handle()[ts]
-			taskList.append( ( ts, task ) )
-		cls.sync()
-		return taskList
-	
-	@classmethod
-	def set( cls, callback, ts=None, *arg, **kwarg ):
-		if not ts:
-			ts = time.time()
-		cls.handle()[str( ts )] = {
-			'callback':callback,
-			'arg':arg,
-			'kwarg':kwarg
-		}
-		cls.sync()
-
-
-
 class DBHistory( DBBase ):
 	filepath = [ 'data', 'history' ]
 	filename = ''
@@ -238,24 +147,27 @@ last_id = cls._cur.lastrowid
 	
 	@classmethod
 	def execute( cls, queryString, *arg ):
-		print '::DB::execute', queryString, arg
+		QHelper.log( '::DB:execute', queryString, arg )
 		cls.cur().execute( queryString, arg )
 		
 		if queryString.strip().lower().startswith( 'select' ):
 			# SELECT: return result
 			result = cls.cur().fetchall()
-			print '::DB::select::fetchall', result
+			QHelper.log( '::DB:select:fetchall', result )
 			return result
 		else:
 			# write-query: commit after execution 
 			cls.conn().commit()
 			
+			rowcount = cls.cur().rowcount
+			lastrowid = cls.cur().lastrowid
+			
 			if queryString.strip().lower().startswith( 'insert' ):
 				# INSERT: return last inserted id
-				print '::DB::insert::rowcount', cls.cur().rowcount
-				print '::DB::insert::lastrowid', cls.cur().lastrowid
-				return cls.cur().lastrowid
+				QHelper.log( '::DB:insert:rowcount', rowcount )
+				QHelper.log( '::DB:insert:lastrowid', lastrowid )
+				return lastrowid
 			else:
-				print '::DB::update::rowcount', cls.cur().rowcount
-				print '::DB::update::lastrowid', cls.cur().lastrowid
-				return cls.cur().rowcount
+				QHelper.log( '::DB:update:rowcount', rowcount )
+				QHelper.log( '::DB:update:lastrowid', lastrowid )
+				return rowcount

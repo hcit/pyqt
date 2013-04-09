@@ -3,8 +3,8 @@
 import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
-from async import ListenerThread, ExecutionThread
-from dbs import DBConf, DBJob, DBCron, DBSchedule, DB
+from async import WorkerThread
+from dbs import DBConf, DBJob, DB
 from helper import QHelper
 
 
@@ -34,9 +34,7 @@ class UI( QtGui.QMainWindow ):
 		self.View = View( self )
 		
 		### Thread
-		self.ListenerThread = ListenerThread( self )
-		self.ExecutionThread = ExecutionThread( self )
-		#self.RandomActionThread = RandomActionThread()
+		self.WorkerThread = WorkerThread( self )
 		
 		### Show the MainWindow
 		#self.show()
@@ -115,7 +113,7 @@ class Action:
 		self.master.show()
 		self.master.View.contact().show()
 		self.master.View.chat().hide()
-		DBJob.set( 'helloActionTrigger' )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'sendMessage', DBConf.get( 'bot' ), 'online' )
 	
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
@@ -128,7 +126,7 @@ class Action:
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
-		DBJob.set( 'projectListActionTrigger' )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectList' )
 	
 	def SIGNALCBreportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:master:reportSubmit' )
@@ -145,14 +143,14 @@ class Action:
 	
 	def SIGNALCBsendMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:master:sendMessage', contact, message )
-		DBJob.set( 'sendMessageActionTrigger', None, contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'sendMessage', contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
 	def SIGNALCBreceiveMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:master:receiveMessage', contact, message )
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
-		DBJob.set( 'projectListActionTrigger' )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectList' )
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:master:projectList', projectList )
@@ -162,7 +160,7 @@ class Action:
 	
 	def SIGNALCBpickedProjectCallback( self, project ):
 		QHelper.log( '::CONNECT:master:pickedProject', project )
-		DBJob.set( 'projectDataActionTrigger', None, project )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectData', project )
 
 
 
@@ -777,7 +775,8 @@ class QLoginView( QForm ):
 		QHelper.log( '::CONNECT:QLoginView:loginSubmit', username, passwd )
 		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
-		DBJob.set( 'connectActionTrigger', None, username, passwd )
+		#DBJob.set( '_connect', None, username, passwd )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), '_connect', username, passwd )
 	
 	def loginSuccessCallback( self ):
 		QHelper.log( '::CONNECT:QLoginView:loginSuccess' )
@@ -894,7 +893,7 @@ class QReportView( QForm ):
 	def reportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:QReportView:reportSubmit' )
 		data = self.values()
-		DBJob.set( 'reportActionTrigger', **data )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'reportAction', data )
 		self.hide()
 	
 	def reportCancelCallback( self ):
