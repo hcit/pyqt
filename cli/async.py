@@ -7,8 +7,9 @@ import time
 from helper import QHelper
 from transport import Transport
 from dbs import DBConf, DBHistory
+from dbremote import DBRemote
 
-class WorkerThread( QtCore.QThread, Transport ):
+class WorkerThread( QtCore.QThread, Transport, DBRemote ):
 	messageCallbackHandler = None
 	
 	def __init__( self, master ):
@@ -32,6 +33,20 @@ class WorkerThread( QtCore.QThread, Transport ):
 	
 	### Transport EXTENSION
 	def projectList( self ):
+		print '::projectList:QUERY'
+		projectDict = DBRemote.doc( type='project' )
+		projectList = [( k, v.get('title','') ) for k,v in projectDict.items()]
+		print '::projectList', projectList
+		self.master.emit( QtCore.SIGNAL( 'projectList' ), projectList )
+	
+	def projectData( self, project ):
+		print '::projectData:QUERY'
+		projectDataDict = DBRemote.doc( type='project', id=project )
+		print '::projectData', projectDataDict
+		self.master.emit( QtCore.SIGNAL( 'projectData' ), projectDataDict )
+	
+	"""
+	def projectList( self ):
 		self.messageCallbackHandler = self.projectListCallback
 		self.sendMessage( DBConf.get( 'bot' ), 'project list' )
 	
@@ -48,6 +63,7 @@ class WorkerThread( QtCore.QThread, Transport ):
 		QHelper.log( '::ASYNC:CALLBACK:projectData', sender, message )
 		message = QHelper.str( message ).split( ':', 1 )[1].strip()
 		self.master.emit( QtCore.SIGNAL( 'projectData' ), message )
+	"""
 	
 	def reportAction( self, data ):
 		self.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (

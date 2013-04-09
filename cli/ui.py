@@ -4,7 +4,7 @@ import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
 from async import WorkerThread
-from dbs import DBConf, DBJob, DB
+from dbs import DBConf, DB
 from helper import QHelper
 
 
@@ -126,7 +126,7 @@ class Action:
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectList' )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'query' )
 	
 	def SIGNALCBreportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:master:reportSubmit' )
@@ -150,7 +150,7 @@ class Action:
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectList' )
+		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'doc', {'type':'project'} )
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:master:projectList', projectList )
@@ -687,13 +687,16 @@ class QProjectData( QtGui.QTextEdit ):
 		self.project = project
 		self.clear()
 		self.write( '...loading' )
+		print '::CLEARED'
 	
 	def projectDataCallback( self, projectData ):
+		print '::QProjctData', projectData.items()
 		QHelper.log( '::CONNECT:QProjectData:projectData', projectData )
 		self.clear()
 		data = '<table width="100%" cellspacing="4" cellpadding="0">'
 		n=0
-		for k, v in json.loads( projectData ).items():
+		for k, v in projectData.items():
+			print k,v
 			n+=1
 			data += '<tr>'
 			data += '<th style="background:'+(n%2 and '#f6f6f6' or '#fcfcfc')+';">' + str( k ) + '</th>'
@@ -705,6 +708,7 @@ class QProjectData( QtGui.QTextEdit ):
 				data
 			)
 		self.write( text )
+		print '::WROTE'
 	
 	def write( self, text ):
 		self.textCursor.insertHtml( text + '<br />' )

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*-coding: utf-8 -*-
 
-import xmpp, time
+import xmpp, time, threading
 from dbs import DBConf
 
 class Transport:
@@ -133,7 +133,6 @@ class Transport:
 	
 	@classmethod
 	def _set_process( cls ):
-		import threading
 		cls._client_thread = threading.Thread( target=cls._process, args=( 1, ) )
 		cls._client_thread.daemon = True
 		cls._client_thread.start()
