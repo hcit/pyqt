@@ -9,27 +9,36 @@ from transport import Transport
 from dbs import DBConf, DBHistory
 from dbremote import DBRemote
 
-class WorkerThread( QtCore.QThread, Transport, DBRemote ):
+class WorkerThread( QtCore.QThread ):
 	messageCallbackHandler = None
 	
 	def __init__( self, master ):
 		QtCore.QThread.__init__( self )
 		self.master = master
-		self.__class__.listener = self
+		Transport.listener = self
+		DBRemote.listener = self
+		DBRemote._dbconnect()
 		self.build()
 	
 	def build( self ):
-		self.connect( self.master, QtCore.SIGNAL( 'jobSignal' ), self.job )
+		self.connect( self.master, QtCore.SIGNAL( 'transportSignal' ), self.transportJob )
+		self.connect( self.master, QtCore.SIGNAL( 'dbSignal' ), self.dbJob )
 		self.start()
 	
 	def run( self ):
 		while True:
 			time.sleep( 0.1 )
 	
-	def job( self, callback, *arg ):
-		QHelper.log( '::ASYNC:CONNECT:' + callback, *arg )
-		if hasattr( self, callback ):
-			getattr( self, callback )( *arg )
+	def transportJob( self, callback, *arg ):
+		QHelper.log( '::ASYNC:CONNECT:TRANSPORT:' + callback, *arg )
+		if hasattr( Transport, callback ):
+			getattr( Transport, callback )( *arg )
+	
+	def dbJob( self, callback, *arg ):
+		QHelper.log( '::ASYNC:CONNECT:DB:' + callback, *arg )
+		DBRemote.queue( callback, *arg )
+		#if hasattr( DBRemote, callback ):
+		#	getattr( DBRemote, callback )( *arg )
 	
 	### Transport EXTENSION
 	def projectList( self ):
@@ -103,3 +112,9 @@ class WorkerThread( QtCore.QThread, Transport, DBRemote ):
 	def presenceCallbackHook( self, contact, status ):
 		QHelper.log( '::ASYNC:CALLBACK:presence' )
 		self.master.emit( QtCore.SIGNAL( 'contactStatus' ), contact, status )
+	
+	
+	
+	### DBRemote CALLBACK
+	def docQueryCallbackHook( self, result ):
+		print '::DBRemote:doc:callback', result

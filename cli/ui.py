@@ -113,7 +113,7 @@ class Action:
 		self.master.show()
 		self.master.View.contact().show()
 		self.master.View.chat().hide()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'sendMessage', DBConf.get( 'bot' ), 'online' )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'sendMessage', DBConf.get( 'bot' ), 'online' )
 	
 	def preferencesActionCallback( self ):
 		self.master.View.preferences().show()
@@ -126,7 +126,7 @@ class Action:
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'query' )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'query' )
 	
 	def SIGNALCBreportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:master:reportSubmit' )
@@ -143,14 +143,14 @@ class Action:
 	
 	def SIGNALCBsendMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:master:sendMessage', contact, message )
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'sendMessage', contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'sendMessage', contact, message.replace( '<br />', '\n' ).replace( '<br/>', '\n' ).replace( '<br>', '\n' ) )
 	
 	def SIGNALCBreceiveMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:master:receiveMessage', contact, message )
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'doc', {'type':'project'} )
+		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project'} )
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:master:projectList', projectList )
@@ -160,7 +160,7 @@ class Action:
 	
 	def SIGNALCBpickedProjectCallback( self, project ):
 		QHelper.log( '::CONNECT:master:pickedProject', project )
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'projectData', project )
+		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project', 'id':project} )
 
 
 
@@ -780,7 +780,7 @@ class QLoginView( QForm ):
 		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
 		#DBJob.set( '_connect', None, username, passwd )
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), '_connect', username, passwd )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), '_connect', username, passwd )
 	
 	def loginSuccessCallback( self ):
 		QHelper.log( '::CONNECT:QLoginView:loginSuccess' )
@@ -897,7 +897,7 @@ class QReportView( QForm ):
 	def reportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:QReportView:reportSubmit' )
 		data = self.values()
-		QHelper.master().emit( QtCore.SIGNAL( 'jobSignal' ), 'reportAction', data )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'reportAction', data )
 		self.hide()
 	
 	def reportCancelCallback( self ):
