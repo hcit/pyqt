@@ -523,16 +523,18 @@ class QChatDialog( QtGui.QTextEdit ):
 	
 	def pickedContactCallback( self, contact ):
 		QHelper.log( '::CONNECT:QChatDialog:pickedContact', contact )
+		if not self.messagesTime.get( contact, None ): self.messagesTime[contact] = []
+		if not self.messagesList.get( contact, None ): self.messagesList[contact] = {}
 		self.parent.setWindowTitle( contact + ' - ' + DBConf.get( 'appname' ) )
 		self.contact = contact
 		self.clear()
-		if not self.messagesTime.get( contact, None ): self.messagesTime[contact] = []
-		if not self.messagesList.get( contact, None ): self.messagesList[contact] = {}
 		for message in self.messages( contact ):
 			self.message( message['ts'], message['sender'], message['message'] )
 	
 	def sendMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:QChatDialog:sendMessage', contact, message )
+		if not self.messagesTime.get( contact, None ): self.messagesTime[contact] = []
+		if not self.messagesList.get( contact, None ): self.messagesList[contact] = {}
 		DBHistory.set( DBConf.get( 'username' ), contact, message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
@@ -541,6 +543,8 @@ class QChatDialog( QtGui.QTextEdit ):
 	
 	def receiveMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:QChatDialog:receiveMessage', contact, message )
+		if not self.messagesTime.get( contact, None ): self.messagesTime[contact] = []
+		if not self.messagesList.get( contact, None ): self.messagesList[contact] = {}
 		DBHistory.set( contact, DBConf.get( 'username' ), message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
@@ -911,7 +915,14 @@ class QReportView( QForm ):
 	def reportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:QReportView:reportSubmit' )
 		data = self.values()
-		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'reportAction', data )
+		reportData = 'report %sh %sm on %s %s' % (
+			QHelper.str( data.get( 'h', '0' ) ),
+			QHelper.str( data.get( 'm', '0' ) ),
+			QHelper.str( data.get( 'project', '' ) ),
+			QHelper.str( data.get( 'summary', '' ) ),
+		)
+		print '::REPORT:MESSAGE', reportData
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'sendMessage', DBConf.get( 'bot' ), reportData )
 		self.hide()
 	
 	def reportCancelCallback( self ):

@@ -73,14 +73,6 @@ class WorkerThread( QtCore.QThread ):
 		self.master.emit( QtCore.SIGNAL( 'projectData' ), message )
 	"""
 	
-	def reportAction( self, data ):
-		self.sendMessage( DBConf.get( 'bot' ), 'report %sh %sm on %s %s' % (
-			QHelper.str( data.get( 'h', 0 ) ),
-			QHelper.str( data.get( 'm', 0 ) ),
-			QHelper.str( data.get( 'project', '' ) ),
-			QHelper.str( data.get( 'summary', '' ) ),
-		) )
-	
 	### Transport CALLBACK
 	def connectSuccessCallbackHook( self ):
 		QHelper.log( '::ASYNC:CALLBACK:connectSuccess' )
