@@ -303,20 +303,20 @@ class QContactList( QtGui.QGroupBox ):
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'contactStatus' ), self.contactStatusCallback )
 		self.connect( QHelper.master(), QtCore.SIGNAL( 'pickedContact' ), self.pickedContactCallback )
 		for row in DB.execute( "SELECT `contact`.*, `contact_group`.`name` FROM `contact`, `contact_group` WHERE `contact`.`contact_group_id`=`contact_group`.`id`" ):
-			self.radioList[row['name']] = QContact( row['name'], 'offline', self )
+			self.radioList[row['name']] = QContact( row['name'], 'offline', '', self )
 			self.layout.addWidget( self.radioList[row['name']] )
 	
 	def receiveMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:QContact:receiveMessage', contact, message )
 		if not contact in self.radioList.keys():
-			self.radioList[contact] = QContact( contact, '?', self )
+			self.radioList[contact] = QContact( contact, '?', '?', self )
 			self.layout.addWidget( self.radioList[contact] )
 			self.radioList[contact].receiveFrom( message, str( time.time() ) )
 	
 	def contactStatusCallback( self, contact, status, message ):
 		QHelper.log( '::CONNECT:QContactList:contactStatus', contact, status, message )
 		if not contact in self.radioList.keys():
-			self.radioList[contact] = QContact( contact, status, self )
+			self.radioList[contact] = QContact( contact, status, message, self )
 			self.layout.addWidget( self.radioList[contact] )
 			#self.layout.setAlignment( self.radioList[contact], QtCore.Qt.AlignTop )
 	
@@ -327,7 +327,7 @@ class QContactList( QtGui.QGroupBox ):
 
 
 class QContact( QtGui.QFrame ):
-	def __init__( self, name, status, parent ):
+	def __init__( self, name, status, statusMessage, parent ):
 		#super( self.__class__, self ).__init__( '' )
 		QtGui.QWidget.__init__( self, parent )
 		self.setObjectName( 'QContact' )
@@ -335,7 +335,7 @@ class QContact( QtGui.QFrame ):
 		self.parent = parent
 		self.messagesNew = {}
 		self.status = status
-		self.statusMessage = ''
+		self.statusMessage = statusMessage
 		self.selected = False
 		self.group = None
 		self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
@@ -385,12 +385,19 @@ class QContact( QtGui.QFrame ):
 	
 	def clickedContactCallback( self, contact ):
 		QHelper.log( '::CONNECT:QContact:clickedContact', contact )
-		if self.name == contact:
-			self.setStyleSheet( 'QWidget#QContact { background:#fff; color:#333; }' )
-			self.buttons.show()
+		ts = time.time()
+		if hasattr( self, 'lastClick' ):
+			lastClick = ts - self.lastClick
 		else:
-			self.buttons.hide()
-			self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
+			lastClick = 999
+		if lastClick >= 0.5:
+			self.lastClick = ts
+			if ( self.name == contact ) and not self.buttons.isVisible():
+				self.setStyleSheet( 'QWidget#QContact { background:#fff; color:#333; }' )
+				self.buttons.show()
+			else:
+				self.buttons.hide()
+				self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
 	
 	def addContactCallback( self, contact, group ):
 		QHelper.log( '::CONNECT:QContact:addContact', contact )
@@ -426,7 +433,7 @@ class QContact( QtGui.QFrame ):
 			self.receiveFrom( message, str( time.time() ) )
 	
 	def contactStatusCallback( self, contact, status, message ):
-		QHelper.log( '::CONNECT:QContact:contactStatus', contact, status, message )
+		QHelper.log( '::CONNECT:QContact:contactStatus', contact, status, message, LEVEL=QHelper.LOG_LEVEL_DEBUG )
 		if self.name == contact:
 			self.status = status
 			self.statusMessage = message
@@ -441,7 +448,6 @@ class QContact( QtGui.QFrame ):
 			self.group = DB.execute( "SELECT `name` FROM `contact_group` WHERE `id`=?", group_id )[0]['name']
 		else:
 			self.group = None
-		QHelper.log( '::CONTACT::GROUP', self.group )
 		if self.group:
 			self.buttons.addButton.hide()
 			self.buttons.removeButton.show()

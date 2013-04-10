@@ -25,7 +25,7 @@ class Transport:
 			try:
 				return getattr( cls, action )( *arg, **kwarg )
 			except Exception as e:
-				print '::TRANSPORT EXCEPTION', e
+				QHelper.log( '::TRANSPORT EXCEPTION', e, LEVEL=QHelper.LOG_LEVEL_ERROR )
 	
 	@classmethod
 	def sendMessageCallback( cls, recipient, message ):
@@ -63,7 +63,7 @@ class Transport:
 			cls.conf['port'] = conf['port']
 		if conf.get( 'nickname', None ):
 			cls.conf['nickname'] = conf['nickname']
-		print '::TRANSPORT-CONNECT', cls.conf
+		QHelper.log( '::TRANSPORT-CONNECT', cls.conf )
 		"""Set up a connection to xmpp server. Authenticate"""
 		#cls._client = xmpp.Client( cls.conf['server'] )
 		cls._client = xmpp.Client( cls.conf['server'], debug=[] )
@@ -132,6 +132,14 @@ class Transport:
 		contact = str( presence.getFrom() ).split('@')[0]
 		status = presence.getType() or presence.getShow() or 'online'
 		message = presence.getStatus() or ''
+		presence_status = {
+			'getFrom':presence.getFrom(),
+			'getFrom.getStripped':presence.getFrom().getStripped(),
+			'getType':presence.getType(),
+			'getShow':presence.getShow(),
+			'getStatus':presence.getStatus()
+		}
+		QHelper.log( '::TRANSPORT:PRESENCE', contact, status, message, LEVEL=QHelper.LOG_LEVEL_DEBUG )
 		"""
 		print '::PRESENCE:STATUS', {
 			'getFrom':presence.getFrom(),
@@ -141,7 +149,7 @@ class Transport:
 			'getStatus':presence.getStatus()
 		}
 		"""
-		cls._contactList[contact] = status
+		cls._contactList[contact] = ( status, message )
 		if cls.listener and hasattr( cls.listener, 'presenceCallbackHook' ):
 			cls.listener.presenceCallbackHook( contact, status, message )
 		cls.presenceCallback( contact, status, message )
