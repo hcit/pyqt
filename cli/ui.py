@@ -914,6 +914,7 @@ class QReportView( QForm ):
 	
 	def projectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:QReportView:projectList', projectList )
+		projectList = [( k, v.get('title','') ) for k,v in projectList.items()]
 		for project, title in projectList:
 			self.fields['project'].addItem( project )
 
