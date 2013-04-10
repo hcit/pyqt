@@ -6,6 +6,9 @@ from unidecode import unidecode
 
 
 class QHelper:
+	LOG_LEVEL_DEBUG = int( '0b0001', 2 )
+	LOG_LEVEL_INFO = int( '0b0010', 2 )
+	LOG_LEVEL_ERROR = int( '0b0100', 2 )
 	UIInstance = None
 	
 	@classmethod
@@ -35,6 +38,9 @@ class QHelper:
 		return string
 	
 	@classmethod
-	def log( cls, *args ):
-		#print '--HELPER', args
-		return
+	def log( cls, *arg, **kwarg ):
+		#print '--HELPER', arg
+		if kwarg.get( 'LEVEL', cls.LOG_LEVEL_DEBUG ) == cls.LOG_LEVEL_DEBUG:
+			pass
+		else:
+			print '::LOG', arg

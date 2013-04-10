@@ -31,14 +31,13 @@ class WorkerThread( QtCore.QThread ):
 	
 	def transportJob( self, callback, *arg ):
 		QHelper.log( '::ASYNC:CONNECT:TRANSPORT:' + callback, *arg )
-		if hasattr( Transport, callback ):
-			getattr( Transport, callback )( *arg )
+		assert callback != 'execute'
+		Transport.execute( callback, *arg )
 	
 	def dbJob( self, callback, *arg ):
 		QHelper.log( '::ASYNC:CONNECT:DB:' + callback, *arg )
+		assert callback != 'queue'
 		DBRemote.queue( callback, *arg )
-		#if hasattr( DBRemote, callback ):
-		#	getattr( DBRemote, callback )( *arg )
 	
 	### Transport EXTENSION
 	def projectList( self ):
@@ -114,5 +113,7 @@ class WorkerThread( QtCore.QThread ):
 	
 	
 	### DBRemote CALLBACK
-	def docQueryCallbackHook( self, result ):
-		print '::DBRemote:doc:callback', result
+	def docQueryCallbackHook( self, result, emit ):
+		QHelper.log( '::ASYNC:CALLBACK:docQuery', result, emit, LEVEL=QHelper.LOG_LEVEL_ERROR )
+		if emit:
+			self.master.emit( QtCore.SIGNAL( emit ), result )

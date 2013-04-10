@@ -47,10 +47,9 @@ class DBRemote:
 			elif not docType:
 				result[db[doc].id] = dict( db[doc].viewitems() )
 		if cls.listener and hasattr( cls.listener, 'docQueryCallbackHook' ):
-			cls.listener.docQueryCallbackHook( result )
+			cls.listener.docQueryCallbackHook( result, filterDict.get( 'emit', None ) )
 		if hasattr( cls, 'docQueryCallback' ):
-			cls.docQueryCallback( result )
-		print '::DQ',result
+			cls.docQueryCallback( result, filterDict.get( 'emit', None ) )
 		return result
 	
 	@classmethod

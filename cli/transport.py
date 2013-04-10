@@ -3,6 +3,7 @@
 
 import xmpp, time, threading
 from dbs import DBConf
+from helper import QHelper
 
 class Transport:
 	_client = None
@@ -90,6 +91,11 @@ class Transport:
 		return True
 	
 	@classmethod
+	def _reconnect( cls ):
+		cls._client = None
+		cls._connect()
+	
+	@classmethod
 	def _get_client( cls ):
 		if not cls._client:
 			cls._connect()
@@ -151,12 +157,12 @@ class Transport:
 	def _get_roster( cls ):
 		return
 		if cls._client and not cls._roster:
-			print '::TRANSPORT:GET_ROSTER'
+			QHelper.log( '::TRANSPORT:GET_ROSTER' )
 			try:
 				cls._roster = cls._get_client().getRoster()
-				#print '::TRANSPORT:GET_ROSTER:OK', cls._roster, dir( cls._roster )
+				QHelper.log( '::TRANSPORT:GET_ROSTER:OK', cls._roster )
 			except Exception as e:
-				print '::TRANSPORT:GET_ROSTER:EXCEPTION', e
+				QHelper.log( '::TRANSPORT:GET_ROSTER:EXCEPTION', e )
 		return cls._roster
 	
 	@classmethod
@@ -171,4 +177,10 @@ class Transport:
 			try:
 				cls._get_client().Process( arg )
 			except ValueError as e:
+				QHelper.log( '::TRANSPORT:PROCESS:VALUEERROR', e, LEVEL=QHelper.LOG_LEVEL_ERROR )
 				cls.serverError( e )
+			"""
+			except Exception as e:
+				QHelper.log( '::TRANSPORT:PROCESS:EXCEPTION', e, LEVEL=QHelper.LOG_LEVEL_ERROR )
+				#cls._reconnect()
+			"""

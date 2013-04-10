@@ -126,7 +126,8 @@ class Action:
 	
 	def reportActionCallback( self ):
 		self.master.View.report().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'query' )
+		#QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), 'query' )
+		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project', 'emit':'projectList'} )
 	
 	def SIGNALCBreportSubmitCallback( self ):
 		QHelper.log( '::CONNECT:master:reportSubmit' )
@@ -150,7 +151,7 @@ class Action:
 	
 	def projectsActionCallback( self ):
 		self.master.View.projects().show()
-		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project'} )
+		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project', 'emit':'projectList'} )
 	
 	def SIGNALCBprojectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:master:projectList', projectList )
@@ -160,7 +161,7 @@ class Action:
 	
 	def SIGNALCBpickedProjectCallback( self, project ):
 		QHelper.log( '::CONNECT:master:pickedProject', project )
-		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project', 'id':project} )
+		QHelper.master().emit( QtCore.SIGNAL( 'dbSignal' ), 'doc', {'type':'project', 'id':project, 'emit':'projectData'} )
 
 
 
@@ -627,6 +628,7 @@ class QProjectList( QtGui.QGroupBox ):
 	
 	def projectListCallback( self, projectList ):
 		QHelper.log( '::CONNECT:QProjectList:projectList', projectList )
+		projectList = [( k, v.get('title','') ) for k,v in projectList.items()]
 		for project, title in projectList:
 			if not project in self.radioList.keys():
 				self.radioList[project] = QProject( project, title, self )
@@ -702,6 +704,8 @@ class QProjectData( QtGui.QTextEdit ):
 		n=0
 		for k, v in projectData.items():
 			print k,v
+			if QHelper.str( k ) in ['_id', '_rev']:
+				continue
 			n+=1
 			data += '<tr>'
 			data += '<th style="background:'+(n%2 and '#f6f6f6' or '#fcfcfc')+';">' + str( k ) + '</th>'
@@ -784,7 +788,6 @@ class QLoginView( QForm ):
 		QHelper.log( '::CONNECT:QLoginView:loginSubmit', username, passwd )
 		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
-		#DBJob.set( '_connect', None, username, passwd )
 		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), '_connect', username, passwd, {'server':DBConf.get('server'),'port':DBConf.get('port'),'nickname':DBConf.get('username').split('.')[0].title()} )
 	
 	def loginSuccessCallback( self ):
