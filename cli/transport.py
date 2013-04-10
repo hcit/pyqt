@@ -35,7 +35,7 @@ class Transport:
 		return True
 	
 	@classmethod
-	def presenceCallback( cls, contact, status ):
+	def presenceCallback( cls, contact, status, message ):
 		return True
 	
 	@classmethod
@@ -79,9 +79,9 @@ class Transport:
 		cls._client.RegisterHandler( 'message', cls.getMessage )
 		cls._client.RegisterHandler( 'presence', cls.getPresence )
 		# http://stackoverflow.com/questions/2381597/xmpp-chat-accessing-contacts-status-messages-with-xmpppys-roster
-		cls._get_roster()
 		cls._client.sendInitPresence( requestRoster=1 )
 		cls._set_process()
+		cls._get_roster()
 		
 		if cls.listener and hasattr( cls.listener, 'connectSuccessCallbackHook' ):
 			cls.listener.connectSuccessCallbackHook()
@@ -121,14 +121,24 @@ class Transport:
 	
 	@classmethod
 	def getPresence( cls, session, presence ):
-		print '::ROSTER:STATUS_FOR', presence.getFrom(), str( presence.getFrom() ).split('/')[0]
-		print '::ROSTER:STATUS', cls._roster.getStatus( str( presence.getFrom() ).split('/')[0] )
+		#print '::ROSTER:STATUS_FOR', presence.getFrom(), str( presence.getFrom() ).split('/')[0]
+		#print '::ROSTER:STATUS', cls._roster.getStatus( presence.getFrom().getStripped() )
 		contact = str( presence.getFrom() ).split('@')[0]
-		status = presence.getStatus() or 'online'
+		status = presence.getType() or presence.getShow() or 'online'
+		message = presence.getStatus() or ''
+		"""
+		print '::PRESENCE:STATUS', {
+			'getFrom':presence.getFrom(),
+			'getFrom.getStripped':presence.getFrom().getStripped(),
+			'getType':presence.getType(),
+			'getShow':presence.getShow(),
+			'getStatus':presence.getStatus()
+		}
+		"""
 		cls._contactList[contact] = status
 		if cls.listener and hasattr( cls.listener, 'presenceCallbackHook' ):
-			cls.listener.presenceCallbackHook( contact, status )
-		cls.presenceCallback( contact, status )
+			cls.listener.presenceCallbackHook( contact, status, message )
+		cls.presenceCallback( contact, status, message )
 	
 	"""
 	@classmethod
@@ -139,11 +149,12 @@ class Transport:
 	
 	@classmethod
 	def _get_roster( cls ):
-		if cls._roster is None:
+		return
+		if cls._client and not cls._roster:
 			print '::TRANSPORT:GET_ROSTER'
 			try:
 				cls._roster = cls._get_client().getRoster()
-				print '::TRANSPORT:GET_ROSTER:OK', cls._roster
+				#print '::TRANSPORT:GET_ROSTER:OK', cls._roster, dir( cls._roster )
 			except Exception as e:
 				print '::TRANSPORT:GET_ROSTER:EXCEPTION', e
 		return cls._roster

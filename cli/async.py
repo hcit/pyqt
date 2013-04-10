@@ -107,9 +107,9 @@ class WorkerThread( QtCore.QThread ):
 		elif message:
 			self.master.emit( QtCore.SIGNAL( 'receiveMessage' ), sender, message )
 	
-	def presenceCallbackHook( self, contact, status ):
+	def presenceCallbackHook( self, contact, status, message ):
 		QHelper.log( '::ASYNC:CALLBACK:presence' )
-		self.master.emit( QtCore.SIGNAL( 'contactStatus' ), contact, status )
+		self.master.emit( QtCore.SIGNAL( 'contactStatus' ), contact, status, message )
 	
 	
 	

@@ -134,8 +134,8 @@ class Action:
 	def SIGNALCBreportCancelCallback( self ):
 		QHelper.log( '::CONNECT:master:reportCancel' )
 	
-	def SIGNALCBcontactStatusCallback( self, contact, status ):
-		QHelper.log( '::CONNECT:master:contactStatus', contact, status )
+	def SIGNALCBcontactStatusCallback( self, contact, status, message ):
+		QHelper.log( '::CONNECT:master:contactStatus', contact, status, message )
 	
 	def SIGNALCBpickedContactCallback( self, contact ):
 		QHelper.log( '::CONNECT:master:pickedContact', contact )
@@ -312,8 +312,8 @@ class QContactList( QtGui.QGroupBox ):
 			self.layout.addWidget( self.radioList[contact] )
 			self.radioList[contact].receiveFrom( message, str( time.time() ) )
 	
-	def contactStatusCallback( self, contact, status ):
-		QHelper.log( '::CONNECT:QContactList:contactStatus', contact, status )
+	def contactStatusCallback( self, contact, status, message ):
+		QHelper.log( '::CONNECT:QContactList:contactStatus', contact, status, message )
 		if not contact in self.radioList.keys():
 			self.radioList[contact] = QContact( contact, status, self )
 			self.layout.addWidget( self.radioList[contact] )
@@ -334,6 +334,7 @@ class QContact( QtGui.QFrame ):
 		self.parent = parent
 		self.messagesNew = {}
 		self.status = status
+		self.statusMessage = ''
 		self.selected = False
 		self.group = None
 		self.setStyleSheet( 'QWidget#QContact { background:#ddd; color:#333; }' )
@@ -423,10 +424,11 @@ class QContact( QtGui.QFrame ):
 		if self.name == contact:
 			self.receiveFrom( message, str( time.time() ) )
 	
-	def contactStatusCallback( self, contact, status ):
-		QHelper.log( '::CONNECT:QContact:contactStatus', contact, status )
+	def contactStatusCallback( self, contact, status, message ):
+		QHelper.log( '::CONNECT:QContact:contactStatus', contact, status, message )
 		if self.name == contact:
 			self.status = status
+			self.statusMessage = message
 			self.update()
 	
 	def update( self ):
@@ -448,13 +450,16 @@ class QContact( QtGui.QFrame ):
 			self.buttons.removeButton.hide()
 			self.nameLabel.setStyleSheet( 'QLabel { color:#999; }' )
 		
-		self.statusLabel.setText( self.status )
+		self.nameLabel.setText( '%s [%s]' % ( self.name, self.status ) )
+		self.statusLabel.setText( self.statusMessage )
 		if self.status == 'online':
 			self.statusLabel.setStyleSheet( 'QLabel { color:green; }' )
 		elif self.status == 'offline':
 			self.statusLabel.setStyleSheet( 'QLabel { color:gray; }' )
+		elif self.status == 'away':
+			self.statusLabel.setStyleSheet( 'QLabel { color:orange; }' )
 		else:
-			self.statusLabel.setStyleSheet( 'QLabel { color:yellow; }' )
+			self.statusLabel.setStyleSheet( 'QLabel { color:red; }' )
 		
 		self.messagesLabel.setText( ( len( self.messagesNew ) and '('+str( len( self.messagesNew ) )+')' or '' ) )
 	
