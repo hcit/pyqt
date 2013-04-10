@@ -10,8 +10,13 @@ class Transport:
 	_status = None
 	_contactList = {}
 	listener = None
-	username = None
-	passwd = None
+	conf = {
+		'username':'',
+		'paswd':'',
+		'nickname':'',
+		'server':'',
+		'port':0,
+	}
 	
 	@classmethod
 	def execute( cls, action, *arg, **kwarg ):
@@ -46,17 +51,23 @@ class Transport:
 		return True
 	
 	@classmethod
-	def _connect( cls, username=None, passwd=None ):
+	def _connect( cls, username=None, passwd=None, conf={} ):
 		if username:
-			cls.username = username
+			cls.conf['username'] = username
 		if passwd:
-			cls.passwd = passwd
-		print '::TRANSPORT-CONNECT', cls.username, cls.passwd
+			cls.conf['passwd'] = passwd
+		if conf.get( 'server', None ):
+			cls.conf['server'] = conf['server']
+		if conf.get( 'port', None ):
+			cls.conf['port'] = conf['port']
+		if conf.get( 'nickname', None ):
+			cls.conf['nickname'] = conf['nickname']
+		print '::TRANSPORT-CONNECT', cls.conf
 		"""Set up a connection to xmpp server. Authenticate"""
-		#cls._client = xmpp.Client( DBConf.get( 'server' ) )
-		cls._client = xmpp.Client( DBConf.get( 'server' ), debug=[] )
-		cls._client.connect( server=( DBConf.get( 'server' ), DBConf.get( 'port' ) ) )
-		cls._status = cls._client.auth( cls.username, cls.passwd, DBConf.get( 'nickname' ) ) and True
+		#cls._client = xmpp.Client( cls.conf['server'] )
+		cls._client = xmpp.Client( cls.conf['server'], debug=[] )
+		cls._client.connect( server=( cls.conf['server'], cls.conf['port'] ) )
+		cls._status = cls._client.auth( cls.conf['username'], cls.conf['passwd'], cls.conf['nickname'] ) and True
 		if cls._status is None:
 			cls._client = None
 			
@@ -66,11 +77,11 @@ class Transport:
 			
 			return None
 		cls._client.RegisterHandler( 'message', cls.getMessage )
-		cls._client.sendInitPresence(requestRoster=1)
-		cls._set_process()
-		cls._get_roster()
-		#cls.sendMessage( DBConf.get( 'username' ), 'online' )
 		cls._client.RegisterHandler( 'presence', cls.getPresence )
+		# http://stackoverflow.com/questions/2381597/xmpp-chat-accessing-contacts-status-messages-with-xmpppys-roster
+		cls._get_roster()
+		cls._client.sendInitPresence( requestRoster=1 )
+		cls._set_process()
 		
 		if cls.listener and hasattr( cls.listener, 'connectSuccessCallbackHook' ):
 			cls.listener.connectSuccessCallbackHook()
@@ -92,7 +103,7 @@ class Transport:
 	
 	@classmethod
 	def sendMessage( cls, recipient, messageText, messageType='chat' ):
-		message = xmpp.Message( recipient + '@' + DBConf.get( 'server' ), messageText )
+		message = xmpp.Message( recipient + '@' + cls.conf['server'], messageText )
 		message.setAttr( 'type', messageType )
 		cls._get_client().send( message )
 		if cls.listener and hasattr( cls.listener, 'sendMessageCallbackHook' ):
@@ -110,6 +121,8 @@ class Transport:
 	
 	@classmethod
 	def getPresence( cls, session, presence ):
+		print '::ROSTER:STATUS_FOR', presence.getFrom(), str( presence.getFrom() ).split('/')[0]
+		print '::ROSTER:STATUS', cls._roster.getStatus( str( presence.getFrom() ).split('/')[0] )
 		contact = str( presence.getFrom() ).split('@')[0]
 		status = presence.getStatus() or 'online'
 		cls._contactList[contact] = status
@@ -117,18 +130,22 @@ class Transport:
 			cls.listener.presenceCallbackHook( contact, status )
 		cls.presenceCallback( contact, status )
 	
+	"""
 	@classmethod
 	def getContactList( cls ):
 		cls._get_roster()
 		return cls._contactList
+	"""
 	
 	@classmethod
 	def _get_roster( cls ):
 		if cls._roster is None:
+			print '::TRANSPORT:GET_ROSTER'
 			try:
-				pass#cls._roster = cls._get_client().getRoster()
+				cls._roster = cls._get_client().getRoster()
+				print '::TRANSPORT:GET_ROSTER:OK', cls._roster
 			except Exception as e:
-				pass
+				print '::TRANSPORT:GET_ROSTER:EXCEPTION', e
 		return cls._roster
 	
 	@classmethod

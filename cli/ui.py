@@ -4,7 +4,7 @@ import sys, time, datetime, json
 from PyQt4 import QtGui, QtCore
 
 from async import WorkerThread
-from dbs import DBConf, DB
+from dbs import DBConf, DBHistory, DB
 from helper import QHelper
 
 
@@ -521,18 +521,18 @@ class QChatDialog( QtGui.QTextEdit ):
 	
 	def sendMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:QChatDialog:sendMessage', contact, message )
+		DBHistory.set( DBConf.get( 'username' ), contact, message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
 		self.messagesList[contact][str( ts )] = { 'ts':str( ts ), 'sender':DBConf.get( 'username' ), 'recipient':contact, 'message':message }
-		
 		self.message( str( ts ), DBConf.get( 'username' ), message )
 	
 	def receiveMessageCallback( self, contact, message ):
 		QHelper.log( '::CONNECT:QChatDialog:receiveMessage', contact, message )
+		DBHistory.set( contact, DBConf.get( 'username' ), message )
 		ts = time.time()
 		self.messagesTime[contact].append( str( ts ) )
 		self.messagesList[contact][str( ts )] = { 'ts':str( ts ), 'sender':contact, 'recipient':DBConf.get( 'username' ), 'message':message }
-		
 		if self.contact == contact:
 			self.message( str( ts ), contact, message )
 	
@@ -780,7 +780,7 @@ class QLoginView( QForm ):
 		self.status.setStyleSheet( 'QLabel { color : gray; }' )
 		self.status.setText( '...authentication' )
 		#DBJob.set( '_connect', None, username, passwd )
-		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), '_connect', username, passwd )
+		QHelper.master().emit( QtCore.SIGNAL( 'transportSignal' ), '_connect', username, passwd, {'server':DBConf.get('server'),'port':DBConf.get('port'),'nickname':DBConf.get('username').split('.')[0].title()} )
 	
 	def loginSuccessCallback( self ):
 		QHelper.log( '::CONNECT:QLoginView:loginSuccess' )

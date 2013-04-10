@@ -6,7 +6,7 @@ import time
 
 from helper import QHelper
 from transport import Transport
-from dbs import DBConf, DBHistory
+from dbs import DBConf
 from dbremote import DBRemote
 
 class WorkerThread( QtCore.QThread ):
@@ -97,7 +97,6 @@ class WorkerThread( QtCore.QThread ):
 	
 	def sendMessageCallbackHook( self, recipient, message ):
 		QHelper.log( '::ASYNC:CALLBACK:sendMessage' )
-		DBHistory.set( DBConf.get( 'username' ), recipient, message )
 	
 	def getMessageCallbackHook( self, sender, message ):
 		QHelper.log( '::ASYNC:CALLBACK:getMessage' )
@@ -106,7 +105,6 @@ class WorkerThread( QtCore.QThread ):
 			self.messageCallbackHandler = None
 			return
 		elif message:
-			DBHistory.set( sender, DBConf.get( 'username' ), message )
 			self.master.emit( QtCore.SIGNAL( 'receiveMessage' ), sender, message )
 	
 	def presenceCallbackHook( self, contact, status ):
